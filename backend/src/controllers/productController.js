@@ -4,19 +4,9 @@ const Product = require("../models/Product");
 const Category = require("../models/Category");
 const uploadToCloudinary = require("../utils/uploadToCloudinary");
 const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
-
 const generateSlug = require("../utils/generateSlug");
 
 const fs = require("fs");
-
-let slug = generateSlug(name);
-
-const existingSlug = await Product.findOne({ slug });
-
-if (existingSlug) {
-  slug = `${slug}-${Date.now()}`;
-}
-
 
 const createProduct = async (req, res) => {
   try {
@@ -31,6 +21,7 @@ const createProduct = async (req, res) => {
       sku,
     } = req.body;
 
+    // Validate required fields
     if (
       !name ||
       !description ||
@@ -44,6 +35,7 @@ const createProduct = async (req, res) => {
       });
     }
 
+    // Check category
     const categoryExists = await Category.findById(category);
 
     if (!categoryExists) {
@@ -52,6 +44,7 @@ const createProduct = async (req, res) => {
       });
     }
 
+    // Check SKU
     const existingProduct = await Product.findOne({ sku });
 
     if (existingProduct) {
@@ -60,38 +53,50 @@ const createProduct = async (req, res) => {
       });
     }
 
+    // Generate unique slug
+    let slug = generateSlug(name);
 
-const images = [];
+    const existingSlug = await Product.findOne({ slug });
 
-if (req.files && req.files.length > 0) {
-  for (const file of req.files) {
-  console.log("Local file:", file.path);
+    if (existingSlug) {
+      slug = `${slug}-${Date.now()}`;
+    }
 
-  const result = await uploadToCloudinary(file.path);
+    // Upload images
+    const images = [];
 
-  images.push({
-    url: result.url,
-    publicId: result.publicId,
-  });
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        console.log("Local file:", file.path);
 
-  fs.unlinkSync(file.path);
-}
-}
+        const result = await uploadToCloudinary(file.path);
 
-   const product = await Product.create({
-  name,
-  slug,
-  description,
-  price,
-  discountPrice: discountPrice || 0,
-  images,
-  brand: brand || "",
-  category,
-  seller: req.user._id,
-  stock,
-  sku,
-});
+        images.push({
+          url: result.url,
+          publicId: result.publicId,
+        });
 
+        // Delete local file after Cloudinary upload
+        fs.unlinkSync(file.path);
+      }
+    }
+
+    // Create product
+    const product = await Product.create({
+      name,
+      slug,
+      description,
+      price,
+      discountPrice: discountPrice || 0,
+      images,
+      brand: brand || "",
+      category,
+      seller: req.user._id,
+      stock,
+      sku,
+    });
+
+    // Populate category and seller
     await product.populate([
       {
         path: "category",
@@ -103,11 +108,14 @@ if (req.files && req.files.length > 0) {
       },
     ]);
 
+    // Response
     res.status(201).json({
       message: "Product created successfully",
       product,
     });
   } catch (error) {
+    console.error("Create product error:", error);
+
     res.status(500).json({
       message: "Failed to create product",
       error: error.message,
