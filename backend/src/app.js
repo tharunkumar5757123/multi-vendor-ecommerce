@@ -13,7 +13,6 @@ const adminRoutes = require("./routes/adminRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const addressRoutes = require("./routes/addressRoutes");
 
-
 const errorMiddleware = require("./middleware/errorMiddleware");
 
 const {
@@ -22,6 +21,7 @@ const {
 
 const app = express();
 
+// CORS
 app.use(cors());
 
 // Stripe webhook MUST come before express.json()
@@ -31,14 +31,17 @@ app.post(
   handleStripeWebhook
 );
 
+// JSON middleware
 app.use(express.json());
 
+// Test route
 app.get("/", (req, res) => {
   res.json({
     message: "Multi-Vendor E-Commerce API is running",
   });
 });
 
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/categories", categoryRoutes);
@@ -51,17 +54,14 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/addresses", addressRoutes);
 
-
-
+// 404 handler
 app.use((req, res, next) => {
   const error = new Error(`Route not found: ${req.originalUrl}`);
   error.statusCode = 404;
   next(error);
 });
 
+// Error handler - only once
 app.use(errorMiddleware);
-
-app.use(errorMiddleware);
-
 
 module.exports = app;
