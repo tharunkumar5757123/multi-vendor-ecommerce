@@ -1,0 +1,516 @@
+Your backend runs on:
+
+http://localhost:5000
+
+Postman lets you test GET/POST/PUT/DELETE requests with headers, authorization, query parameters, JSON, and form-data.
+
+1. Server Test
+GET
+GET http://localhost:5000/
+
+Expected:
+
+{
+  "message": "Multi-Vendor E-Commerce API is running"
+}
+2. Authentication
+Register Customer
+POST
+POST http://localhost:5000/api/auth/register
+
+Body → raw → JSON
+
+{
+  "name": "Tharun Kumar",
+  "email": "tharun@gmail.com",
+  "password": "123456"
+}
+
+Expected:
+
+{
+  "message": "User registered successfully",
+  "token": "...",
+  "user": {
+    "name": "Tharun Kumar",
+    "email": "tharun@gmail.com",
+    "role": "customer"
+  }
+}
+
+Save the token.
+
+Login
+POST
+POST http://localhost:5000/api/auth/login
+
+Body:
+
+{
+  "email": "tharun@gmail.com",
+  "password": "123456"
+}
+
+Expected:
+
+{
+  "message": "Login successful",
+  "token": "...",
+  "user": {
+    "role": "customer"
+  }
+}
+
+For protected endpoints, use Authorization → Bearer Token in Postman. Postman supports Bearer tokens specifically for JWT-style authentication.
+
+3. Category APIs
+Get Categories
+GET http://localhost:5000/api/categories
+
+No token required.
+
+Create Category
+
+Admin token required.
+
+POST http://localhost:5000/api/categories
+
+Authorization:
+
+Bearer ADMIN_TOKEN
+
+Body:
+
+{
+  "name": "Electronics",
+  "description": "Electronic products"
+}
+Get Category
+GET http://localhost:5000/api/categories/CATEGORY_ID
+Update Category
+PUT http://localhost:5000/api/categories/CATEGORY_ID
+
+Body:
+
+{
+  "name": "Mobile Electronics",
+  "description": "Mobile and electronic products"
+}
+
+Admin token required.
+
+Delete Category
+DELETE http://localhost:5000/api/categories/CATEGORY_ID
+
+Admin token required.
+
+4. Product APIs
+Get Products
+GET http://localhost:5000/api/products
+Search Products
+GET http://localhost:5000/api/products?search=phone
+Filter by Category
+GET http://localhost:5000/api/products?category=CATEGORY_ID
+Price Filter
+GET http://localhost:5000/api/products?minPrice=500&maxPrice=50000
+Sort
+
+Low price:
+
+GET http://localhost:5000/api/products?sort=priceLow
+
+High price:
+
+GET http://localhost:5000/api/products?sort=priceHigh
+
+Rating:
+
+GET http://localhost:5000/api/products?sort=rating
+
+Oldest:
+
+GET http://localhost:5000/api/products?sort=oldest
+Pagination
+GET http://localhost:5000/api/products?page=1&limit=10
+
+You can combine them:
+
+GET http://localhost:5000/api/products?search=phone&minPrice=500&maxPrice=50000&sort=priceLow&page=1&limit=10
+5. Seller Product Creation
+
+First you need a seller account.
+
+Your current register endpoint creates customers by default, so create a seller directly in MongoDB for testing, or temporarily change the role in MongoDB:
+
+{
+  "role": "seller"
+}
+
+Then login with that seller account and get the seller JWT.
+
+POST
+POST http://localhost:5000/api/products
+
+Authorization:
+
+Bearer SELLER_TOKEN
+
+Body → form-data
+
+Key	Type	Value
+name	Text	iPhone 15
+description	Text	Apple smartphone
+price	Text	60000
+discountPrice	Text	55000
+brand	Text	Apple
+category	Text	CATEGORY_ID
+stock	Text	20
+sku	Text	IPHONE15-001
+images	File	select image
+
+You can add up to 5 images because your route uses:
+
+upload.array("images", 5)
+
+Postman supports form-data file uploads directly through the Body tab.
+
+Expected result should contain:
+
+"images": [
+  {
+    "url": "https://res.cloudinary.com/...",
+    "publicId": "..."
+  }
+]
+
+And your local folder should also contain the uploaded image:
+
+backend/
+└── uploads/
+    └── products/
+        └── generated-image-name.jpg
+6. Get Single Product
+GET http://localhost:5000/api/products/PRODUCT_ID
+7. Update Product
+PUT http://localhost:5000/api/products/PRODUCT_ID
+
+Authorization:
+
+Bearer SELLER_TOKEN
+
+Use form-data.
+
+Example:
+
+name = iPhone 15 Updated
+price = 58000
+stock = 15
+
+You can also upload new images.
+
+8. Delete Product
+DELETE http://localhost:5000/api/products/PRODUCT_ID
+
+Seller/Admin token required.
+
+This should also delete the product images from Cloudinary.
+
+9. Address APIs
+
+Customer token required.
+
+Add Address
+POST http://localhost:5000/api/addresses
+
+Body:
+
+{
+  "fullName": "G Tharun Kumar",
+  "phone": "9876543210",
+  "address": "Main Road",
+  "city": "Hyderabad",
+  "state": "Telangana",
+  "pincode": "500001",
+  "isDefault": true
+}
+Get My Addresses
+GET http://localhost:5000/api/addresses
+Get Address
+GET http://localhost:5000/api/addresses/ADDRESS_ID
+Update Address
+PUT http://localhost:5000/api/addresses/ADDRESS_ID
+{
+  "city": "Hyderabad",
+  "pincode": "500002"
+}
+Set Default
+PUT http://localhost:5000/api/addresses/ADDRESS_ID/default
+Delete Address
+DELETE http://localhost:5000/api/addresses/ADDRESS_ID
+10. Cart APIs
+
+Customer token required.
+
+Get Cart
+GET http://localhost:5000/api/cart
+Add Product
+POST http://localhost:5000/api/cart
+
+Body:
+
+{
+  "productId": "PRODUCT_ID",
+  "quantity": 2
+}
+Update Quantity
+PUT http://localhost:5000/api/cart/PRODUCT_ID
+
+Body:
+
+{
+  "quantity": 3
+}
+Remove Product
+DELETE http://localhost:5000/api/cart/PRODUCT_ID
+Clear Cart
+DELETE http://localhost:5000/api/cart
+11. Order APIs
+Create Order
+
+First:
+
+Customer login
+Add product to cart
+Add address
+Copy ADDRESS_ID
+
+Then:
+
+POST http://localhost:5000/api/orders
+
+Body:
+
+{
+  "addressId": "ADDRESS_ID",
+  "paymentMethod": "cod"
+}
+
+Expected:
+
+{
+  "message": "Order created successfully",
+  "order": {
+    "orderStatus": "placed",
+    "paymentMethod": "cod",
+    "paymentStatus": "pending"
+  }
+}
+My Orders
+GET http://localhost:5000/api/orders/my-orders
+Order Details
+GET http://localhost:5000/api/orders/ORDER_ID
+Cancel Order
+PUT http://localhost:5000/api/orders/ORDER_ID/cancel
+12. Seller Orders
+
+Seller token required.
+
+GET http://localhost:5000/api/orders/seller/my-orders
+Seller Update Item Status
+PUT http://localhost:5000/api/orders/seller/ORDER_ID/status
+
+Body:
+
+{
+  "productId": "PRODUCT_ID",
+  "status": "confirmed"
+}
+
+Then test:
+
+{
+  "productId": "PRODUCT_ID",
+  "status": "processing"
+}
+
+Then:
+
+{
+  "productId": "PRODUCT_ID",
+  "status": "shipped"
+}
+
+Finally:
+
+{
+  "productId": "PRODUCT_ID",
+  "status": "delivered"
+}
+
+This tests your multi-vendor item-level order status system.
+
+13. Seller Dashboard
+GET http://localhost:5000/api/sellers/dashboard
+
+Seller token required.
+
+Expected information:
+
+{
+  "totalProducts": 5,
+  "totalOrders": 10,
+  "pendingItems": 3,
+  "deliveredItems": 6,
+  "totalSales": 25000
+}
+14. Review APIs
+Get Product Reviews
+GET http://localhost:5000/api/reviews/product/PRODUCT_ID
+
+No token required.
+
+Create Review
+
+Customer must have delivered that product.
+
+POST http://localhost:5000/api/reviews/product/PRODUCT_ID
+
+Body:
+
+{
+  "rating": 5,
+  "comment": "Excellent product. Very good quality."
+}
+Update Review
+PUT http://localhost:5000/api/reviews/REVIEW_ID
+{
+  "rating": 4,
+  "comment": "Good product."
+}
+Delete Review
+DELETE http://localhost:5000/api/reviews/REVIEW_ID
+15. Admin Dashboard
+
+Admin token required.
+
+GET http://localhost:5000/api/admin/dashboard
+
+Expected data includes:
+
+totalUsers
+totalSellers
+totalProducts
+totalOrders
+pendingOrders
+deliveredOrders
+totalRevenue
+recentOrders
+16. Admin All Orders
+GET http://localhost:5000/api/orders/admin/all
+
+Admin token required.
+
+17. Stripe Payment
+
+After creating an order with:
+
+{
+  "addressId": "ADDRESS_ID",
+  "paymentMethod": "online"
+}
+
+Copy the ORDER_ID.
+
+Then:
+
+POST http://localhost:5000/api/payments/create-checkout-session
+
+Body:
+
+{
+  "orderId": "ORDER_ID"
+}
+
+Expected:
+
+{
+  "message": "Checkout session created successfully",
+  "sessionId": "...",
+  "checkoutUrl": "https://checkout.stripe.com/..."
+}
+
+Open the checkoutUrl in your browser to test Stripe Checkout.
+
+18. Stripe Webhook
+
+This one is not tested like a normal JSON endpoint.
+
+Your webhook is:
+
+POST http://localhost:5000/api/payments/webhook
+
+Stripe sends the webhook request.
+
+Your code verifies the Stripe signature and then changes:
+
+paymentStatus
+
+from:
+
+pending
+
+to:
+
+paid
+
+Your webhook route must remain before express.json(), which you've already done.
+
+Complete Testing Order
+
+Don't test randomly. Follow this order:
+
+1.  GET /
+       ↓
+2.  Register Customer
+       ↓
+3.  Login Customer
+       ↓
+4.  Create Seller
+       ↓
+5.  Login Seller
+       ↓
+6.  Create Category
+       ↓
+7.  Create Product + Images
+       ↓
+8.  Get Products
+       ↓
+9.  Search / Filter / Sort
+       ↓
+10. Add Address
+       ↓
+11. Add Product to Cart
+       ↓
+12. Get Cart
+       ↓
+13. Create COD Order
+       ↓
+14. Get My Orders
+       ↓
+15. Seller Get Orders
+       ↓
+16. Seller Update Status
+       ↓
+17. Delivered
+       ↓
+18. Customer Create Review
+       ↓
+19. Seller Dashboard
+       ↓
+20. Admin Dashboard
+       ↓
+21. Online Order
+       ↓
+22. Stripe Checkout
+       ↓
+23. Stripe Webhook
