@@ -107,18 +107,17 @@ function Home() {
 
                   <button
                     onClick={() => navigate("/products")}
-                    className="rounded-xl bg-white px-7 py-3.5 font-bold text-indigo-700 shadow-lg transition hover:-translate-y-0.5 hover:bg-indigo-50"
+                    className="rounded-xl bg-white px-40 py-3.5 font-bold text-indigo-700 shadow-lg transition hover:-translate-y-0.5 hover:bg-indigo-50"
                   >
                     Shop Now →
                   </button>
 
-                  <button
+                  {/* <button
                     onClick={() => navigate("/register")}
                     className="rounded-xl border border-white/30 bg-white/10 px-7 py-3.5 font-bold text-white backdrop-blur transition hover:bg-white/20"
                   >
                     Create Account
-                  </button>
-
+                  </button> */}
                 </div>
 
                 <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-indigo-100 lg:justify-start">
