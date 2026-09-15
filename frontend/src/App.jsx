@@ -1,12 +1,13 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-// Public / Common
 
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+// Public / Common
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/ProtectedRoute";
-import RoleRedirect from "./components/RoleRedirect";
 import WishlistLoader from "./components/WishlistLoader";
+
 // Customer
 import Home from "./pages/Home";
 import Products from "./pages/Products";
@@ -19,6 +20,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import Wishlist from "./pages/Wishlist";
 import Profile from "./pages/Profile";
+
 // Admin
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -27,246 +29,293 @@ import AdminOrders from "./pages/admin/AdminOrders";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminProductDetails from "./pages/admin/AdminProductDetails";
 import AdminLayout from "./components/AdminLayout";
+
 // Seller
 import SellerDashboard from "./pages/seller/SellerDashboard";
 import SellerProducts from "./pages/seller/SellerProducts";
 import SellerAddProduct from "./pages/seller/SellerAddProduct";
 import SellerEditProduct from "./pages/seller/SellerEditProduct";
 import SellerOrders from "./pages/seller/SellerOrders";
+
 function App() {
   return (
     <BrowserRouter>
-      {" "}
-      {/* Loads wishlist data when customer is logged in */} <WishlistLoader />{" "}
+
+      {/* Loads wishlist data when customer is logged in */}
+      <WishlistLoader />
+
       <Routes>
-        {" "}
-        {/* ========================= PUBLIC ROUTES ========================== */}{" "}
-        <Route path="/login" element={<Login />} />{" "}
-        <Route path="/register" element={<Register />} />{" "}
-        <Route path="/unauthorized" element={<Unauthorized />} />{" "}
-        {/* Redirect user based on role */}{" "}
-        <Route path="/" element={<RoleRedirect />} />{" "}
-        {/* ========================= CUSTOMER ROUTES ========================== */}{" "}
+
+        {/* =====================================================
+            PUBLIC ROUTES
+        ====================================================== */}
+
+        {/* Public Landing Page */}
+        <Route
+          path="/"
+          element={<Home />}
+        />
+
+        {/* Login */}
+        <Route
+          path="/login"
+          element={<Login />}
+        />
+
+        {/* Register */}
+        <Route
+          path="/register"
+          element={<Register />}
+        />
+
+        {/* Unauthorized / 403 */}
+        <Route
+          path="/unauthorized"
+          element={<Unauthorized />}
+        />
+
+        {/* Public Product Listing */}
+        <Route
+          path="/products"
+          element={<Products />}
+        />
+
+        {/* Public Product Details */}
+        <Route
+          path="/products/:id"
+          element={<ProductDetails />}
+        />
+
+
+        {/* =====================================================
+            CUSTOMER ROUTES
+        ====================================================== */}
+
+        {/* Customer Home */}
         <Route
           path="/home"
           element={
             <ProtectedRoute allowedRoles={["customer"]}>
-              {" "}
-              <Home />{" "}
+              <Home />
             </ProtectedRoute>
           }
-        />{" "}
-        <Route
-          path="/products"
-          element={
-            <ProtectedRoute allowedRoles={["customer"]}>
-              {" "}
-              <Products />{" "}
-            </ProtectedRoute>
-          }
-        />{" "}
-        <Route
-          path="/products/:id"
-          element={
-            <ProtectedRoute allowedRoles={["customer"]}>
-              {" "}
-              <ProductDetails />{" "}
-            </ProtectedRoute>
-          }
-        />{" "}
+        />
+
+        {/* Cart */}
         <Route
           path="/cart"
           element={
             <ProtectedRoute allowedRoles={["customer"]}>
-              {" "}
-              <Cart />{" "}
+              <Cart />
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Checkout */}
         <Route
           path="/checkout"
           element={
             <ProtectedRoute allowedRoles={["customer"]}>
-              {" "}
-              <Checkout />{" "}
+              <Checkout />
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Orders */}
         <Route
           path="/orders"
           element={
             <ProtectedRoute allowedRoles={["customer"]}>
-              {" "}
-              <Orders />{" "}
+              <Orders />
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Order Details */}
         <Route
           path="/orders/:id"
           element={
             <ProtectedRoute allowedRoles={["customer"]}>
-              {" "}
-              <OrderDetails />{" "}
+              <OrderDetails />
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Wishlist */}
         <Route
           path="/wishlist"
           element={
             <ProtectedRoute allowedRoles={["customer"]}>
-              {" "}
-              <Wishlist />{" "}
+              <Wishlist />
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Profile */}
         <Route
           path="/profile"
           element={
             <ProtectedRoute allowedRoles={["customer"]}>
-              {" "}
-              <Profile />{" "}
+              <Profile />
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Payment Success */}
         <Route
           path="/payment-success"
           element={
             <ProtectedRoute allowedRoles={["customer"]}>
-              {" "}
-              <PaymentSuccess />{" "}
+              <PaymentSuccess />
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Payment Cancelled */}
         <Route
           path="/payment-cancelled"
           element={
             <ProtectedRoute allowedRoles={["customer"]}>
-              {" "}
-              <PaymentCancelled />{" "}
+              <PaymentCancelled />
             </ProtectedRoute>
           }
-        />{" "}
-        {/* ========================= ADMIN ROUTES ========================== */}{" "}
+        />
+
+
+        {/* =====================================================
+            ADMIN ROUTES
+        ====================================================== */}
+
+        {/* Admin Dashboard */}
         <Route
           path="/admin/dashboard"
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
-              {" "}
               <AdminLayout>
-                {" "}
-                <AdminDashboard />{" "}
-              </AdminLayout>{" "}
+                <AdminDashboard />
+              </AdminLayout>
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Admin Users */}
         <Route
           path="/admin/users"
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
-              {" "}
               <AdminLayout>
-                {" "}
-                <AdminUsers />{" "}
-              </AdminLayout>{" "}
+                <AdminUsers />
+              </AdminLayout>
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Admin Products */}
         <Route
           path="/admin/products"
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
-              {" "}
               <AdminLayout>
-                {" "}
-                <AdminProducts />{" "}
-              </AdminLayout>{" "}
+                <AdminProducts />
+              </AdminLayout>
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Admin Product Details */}
         <Route
           path="/admin/products/:id"
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
-              {" "}
               <AdminLayout>
-                {" "}
-                <AdminProductDetails />{" "}
-              </AdminLayout>{" "}
+                <AdminProductDetails />
+              </AdminLayout>
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Admin Orders */}
         <Route
           path="/admin/orders"
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
-              {" "}
               <AdminLayout>
-                {" "}
-                <AdminOrders />{" "}
-              </AdminLayout>{" "}
+                <AdminOrders />
+              </AdminLayout>
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Admin Categories */}
         <Route
           path="/admin/categories"
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
-              {" "}
               <AdminLayout>
-                {" "}
-                <AdminCategories />{" "}
-              </AdminLayout>{" "}
+                <AdminCategories />
+              </AdminLayout>
             </ProtectedRoute>
           }
-        />{" "}
-        {/* ========================= SELLER ROUTES ========================== */}{" "}
+        />
+
+
+        {/* =====================================================
+            SELLER ROUTES
+        ====================================================== */}
+
+        {/* Seller Dashboard */}
         <Route
           path="/seller/dashboard"
           element={
             <ProtectedRoute allowedRoles={["seller"]}>
-              {" "}
-              <SellerDashboard />{" "}
+              <SellerDashboard />
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Seller Products */}
         <Route
           path="/seller/products"
           element={
             <ProtectedRoute allowedRoles={["seller"]}>
-              {" "}
-              <SellerProducts />{" "}
+              <SellerProducts />
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Add Product */}
         <Route
           path="/seller/products/add"
           element={
             <ProtectedRoute allowedRoles={["seller"]}>
-              {" "}
-              <SellerAddProduct />{" "}
+              <SellerAddProduct />
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Edit Product */}
         <Route
           path="/seller/products/edit/:id"
           element={
             <ProtectedRoute allowedRoles={["seller"]}>
-              {" "}
-              <SellerEditProduct />{" "}
+              <SellerEditProduct />
             </ProtectedRoute>
           }
-        />{" "}
+        />
+
+        {/* Seller Orders */}
         <Route
           path="/seller/orders"
           element={
             <ProtectedRoute allowedRoles={["seller"]}>
-              {" "}
-              <SellerOrders />{" "}
+              <SellerOrders />
             </ProtectedRoute>
           }
-        />{" "}
-      </Routes>{" "}
+        />
+
+      </Routes>
     </BrowserRouter>
   );
 }
+
 export default App;

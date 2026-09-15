@@ -1,440 +1,532 @@
 
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import ProductCard from "../components/ProductCard";
-import api from "../services/api";
 
 function Home() {
   const navigate = useNavigate();
 
-  const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
+  const features = [
+    {
+      icon: "🚚",
+      title: "Fast Delivery",
+      description:
+        "Get your favorite products delivered quickly and safely to your doorstep.",
+    },
+    {
+      icon: "🔒",
+      title: "Secure Payments",
+      description:
+        "Your payments are protected with secure and trusted payment processing.",
+    },
+    {
+      icon: "🏪",
+      title: "Trusted Sellers",
+      description:
+        "Shop from multiple sellers and discover products from trusted businesses.",
+    },
+    {
+      icon: "↩️",
+      title: "Easy Returns",
+      description:
+        "Simple and convenient shopping experience with customer-friendly returns.",
+    },
+  ];
 
-  const [loadingCategories, setLoadingCategories] =
-    useState(true);
-
-  const [loadingProducts, setLoadingProducts] =
-    useState(true);
-
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetchCategories();
-    fetchProducts();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      setLoadingCategories(true);
-
-      const response = await api.get("/categories");
-
-      setCategories(
-        response.data.categories || []
-      );
-    } catch (error) {
-      console.error(
-        "Categories error:",
-        error
-      );
-    } finally {
-      setLoadingCategories(false);
-    }
-  };
-
-  const fetchProducts = async () => {
-    try {
-      setLoadingProducts(true);
-      setError("");
-
-      const response = await api.get(
-        "/products?limit=8&sort=-createdAt"
-      );
-
-      setProducts(
-        response.data.products || []
-      );
-    } catch (error) {
-      console.error(
-        "Products error:",
-        error
-      );
-
-      setError(
-        error.response?.data?.message ||
-          "Failed to load products"
-      );
-    } finally {
-      setLoadingProducts(false);
-    }
-  };
-
-  const getCategoryImage = (category) => {
-    if (!category?.image) {
-      return "";
-    }
-
-    return category.image;
-  };
-
-  const handleCategoryClick = (category) => {
-    navigate(
-      `/products?category=${category._id}`
-    );
-  };
+  const categories = [
+    {
+      name: "Electronics",
+      icon: "💻",
+      description: "Laptops, phones & gadgets",
+    },
+    {
+      name: "Fashion",
+      icon: "👕",
+      description: "Clothing & accessories",
+    },
+    {
+      name: "Home & Living",
+      icon: "🏠",
+      description: "Everything for your home",
+    },
+    {
+      name: "Beauty",
+      icon: "✨",
+      description: "Beauty & personal care",
+    },
+    {
+      name: "Sports",
+      icon: "⚽",
+      description: "Fitness & sports equipment",
+    },
+    {
+      name: "Accessories",
+      icon: "🎧",
+      description: "Useful everyday accessories",
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700">
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-24">
-          {/* Text */}
-          <div className="text-white">
-            <span className="mb-4 inline-block rounded-full bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur">
-              Welcome to MultiShop
-            </span>
+      <main className="bg-white">
 
-            <h1 className="text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
-              Everything you need,
-              <span className="block text-blue-200">
-                all in one place.
-              </span>
-            </h1>
+        {/* ================= HERO ================= */}
+        <section className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-indigo-900 to-purple-900">
 
-            <p className="mt-6 max-w-xl text-lg leading-8 text-blue-100">
-              Discover quality products from
-              trusted sellers and enjoy a simple,
-              secure and convenient shopping
-              experience.
-            </p>
+          <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-purple-500/20 blur-3xl" />
 
-            <div className="mt-8 flex flex-wrap gap-4">
-              <button
-                onClick={() =>
-                  navigate("/products")
-                }
-                className="rounded-lg bg-white px-6 py-3 font-semibold text-blue-700 shadow-lg transition hover:bg-gray-100"
-              >
-                Shop Now
-              </button>
+          <div className="absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
 
-              <button
-                onClick={() =>
-                  document
-                    .getElementById("categories")
-                    ?.scrollIntoView({
-                      behavior: "smooth",
-                    })
-                }
-                className="rounded-lg border border-white/50 px-6 py-3 font-semibold text-white transition hover:bg-white/10"
-              >
-                Browse Categories
-              </button>
-            </div>
-          </div>
+          <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
 
-          {/* Hero Card */}
-          <div className="hidden lg:block">
-            <div className="relative mx-auto max-w-md">
-              <div className="rounded-3xl bg-white/10 p-8 shadow-2xl backdrop-blur">
-                <div className="rounded-2xl bg-white p-8">
-                  <div className="mb-6 flex items-center justify-between">
-                    <span className="text-4xl">
-                      🛍️
-                    </span>
+            <div className="grid items-center gap-12 lg:grid-cols-2">
 
-                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                      Secure Shopping
-                    </span>
+              {/* Hero Content */}
+              <div className="text-center lg:text-left">
+
+                <div className="mb-6 inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-indigo-100 backdrop-blur">
+                  ✨ Your one-stop shopping destination
+                </div>
+
+                <h1 className="text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
+                  Everything You Need,
+                  <span className="block text-indigo-300">
+                    All in One Place.
+                  </span>
+                </h1>
+
+                <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-indigo-100 sm:text-lg lg:mx-0">
+                  Discover quality products from trusted sellers,
+                  enjoy secure payments, and experience a simple
+                  shopping journey built for everyone.
+                </p>
+
+                <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row lg:justify-start">
+
+                  <button
+                    onClick={() => navigate("/products")}
+                    className="rounded-xl bg-white px-7 py-3.5 font-bold text-indigo-700 shadow-lg transition hover:-translate-y-0.5 hover:bg-indigo-50"
+                  >
+                    Shop Now →
+                  </button>
+
+                  <button
+                    onClick={() => navigate("/register")}
+                    className="rounded-xl border border-white/30 bg-white/10 px-7 py-3.5 font-bold text-white backdrop-blur transition hover:bg-white/20"
+                  >
+                    Create Account
+                  </button>
+
+                </div>
+
+                <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-indigo-100 lg:justify-start">
+                  <span>✓ Secure Checkout</span>
+                  <span>✓ Trusted Sellers</span>
+                  <span>✓ Easy Shopping</span>
+                </div>
+
+              </div>
+
+              {/* Hero Visual */}
+              <div className="relative hidden lg:block">
+
+                <div className="relative mx-auto max-w-lg">
+
+                  <div className="rounded-3xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-lg">
+
+                    <div className="rounded-2xl bg-white p-5">
+
+                      <div className="mb-5 flex items-center justify-between">
+
+                        <div>
+                          <p className="text-xs font-medium text-gray-400">
+                            FEATURED COLLECTION
+                          </p>
+
+                          <h3 className="mt-1 text-xl font-bold text-gray-900">
+                            Shop Everything
+                          </h3>
+                        </div>
+
+                        <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
+                          NEW
+                        </span>
+
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+
+                        <div className="rounded-2xl bg-gray-100 p-6 text-center">
+                          <div className="text-5xl">💻</div>
+                          <p className="mt-3 font-bold text-gray-800">
+                            Electronics
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-indigo-50 p-6 text-center">
+                          <div className="text-5xl">👕</div>
+                          <p className="mt-3 font-bold text-gray-800">
+                            Fashion
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-purple-50 p-6 text-center">
+                          <div className="text-5xl">🏠</div>
+                          <p className="mt-3 font-bold text-gray-800">
+                            Home
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-pink-50 p-6 text-center">
+                          <div className="text-5xl">🎧</div>
+                          <p className="mt-3 font-bold text-gray-800">
+                            Accessories
+                          </p>
+                        </div>
+
+                      </div>
+
+                      <button
+                        onClick={() => navigate("/products")}
+                        className="mt-5 w-full rounded-xl bg-indigo-600 py-3 font-bold text-white transition hover:bg-indigo-700"
+                      >
+                        Explore Products
+                      </button>
+
+                    </div>
                   </div>
 
-                  <h3 className="text-2xl font-bold text-gray-800">
-                    Shop with confidence
-                  </h3>
+                  {/* Floating Card */}
+                  <div className="absolute -bottom-6 -left-8 rounded-2xl bg-white px-5 py-4 shadow-xl">
 
-                  <p className="mt-3 text-gray-500">
-                    Quality products, trusted sellers
-                    and secure payments.
-                  </p>
+                    <div className="flex items-center gap-3">
 
-                  <div className="mt-6 grid grid-cols-3 gap-3">
-                    <div className="rounded-xl bg-blue-50 p-4 text-center">
-                      <div className="text-2xl">
-                        📦
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-100 text-xl">
+                        ✓
                       </div>
-                      <p className="mt-1 text-xs font-medium text-gray-600">
-                        Products
-                      </p>
+
+                      <div>
+                        <p className="text-xs text-gray-500">
+                          Shopping made
+                        </p>
+
+                        <p className="font-bold text-gray-900">
+                          Simple & Secure
+                        </p>
+                      </div>
+
                     </div>
 
-                    <div className="rounded-xl bg-green-50 p-4 text-center">
-                      <div className="text-2xl">
-                        🚚
-                      </div>
-                      <p className="mt-1 text-xs font-medium text-gray-600">
-                        Delivery
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl bg-purple-50 p-4 text-center">
-                      <div className="text-2xl">
-                        🔒
-                      </div>
-                      <p className="mt-1 text-xs font-medium text-gray-600">
-                        Secure
-                      </p>
-                    </div>
                   </div>
+
                 </div>
               </div>
+
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Categories */}
-      <section
-        id="categories"
-        className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"
-      >
-        <div className="mb-8 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
-              Explore
-            </p>
 
-            <h2 className="mt-1 text-3xl font-bold text-gray-800">
-              Shop by Category
-            </h2>
+        {/* ================= FEATURES ================= */}
+        <section className="border-b bg-gray-50">
 
-            <p className="mt-2 text-gray-500">
-              Find products from your favorite
-              categories.
-            </p>
-          </div>
+          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
 
-          <button
-            onClick={() =>
-              navigate("/products")
-            }
-            className="hidden rounded-lg px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 sm:block"
-          >
-            View All →
-          </button>
-        </div>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
 
-        {loadingCategories ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {[1, 2, 3, 4, 5, 6].map(
-              (item) => (
+              {features.map((feature) => (
                 <div
-                  key={item}
-                  className="h-40 animate-pulse rounded-xl bg-gray-200"
-                />
-              )
-            )}
-          </div>
-        ) : categories.length === 0 ? (
-          <div className="rounded-xl bg-white p-10 text-center shadow-sm">
-            <p className="text-gray-500">
-              No categories available.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {categories
-              .slice(0, 6)
-              .map((category) => {
-                const image =
-                  getCategoryImage(category);
+                  key={feature.title}
+                  className="rounded-2xl bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+                >
 
-                return (
-                  <button
-                    key={category._id}
-                    onClick={() =>
-                      handleCategoryClick(
-                        category
-                      )
-                    }
-                    className="group overflow-hidden rounded-xl border border-gray-200 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-                  >
-                    <div className="flex h-28 items-center justify-center overflow-hidden bg-gray-100">
-                      {image ? (
-                        <img
-                          src={image}
-                          alt={category.name}
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                        />
-                      ) : (
-                        <span className="text-4xl">
-                          🗂️
-                        </span>
-                      )}
-                    </div>
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-2xl">
+                    {feature.icon}
+                  </div>
 
-                    <div className="p-3">
-                      <p className="truncate text-sm font-semibold text-gray-800">
-                        {category.name}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
+                  <h3 className="text-lg font-bold text-gray-900">
+                    {feature.title}
+                  </h3>
+
+                  <p className="mt-2 text-sm leading-6 text-gray-500">
+                    {feature.description}
+                  </p>
+
+                </div>
+              ))}
+
+            </div>
           </div>
-        )}
-      </section>
+        </section>
 
-      {/* Products */}
-      <section className="bg-white py-14">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
-                Fresh Arrivals
+
+        {/* ================= CATEGORIES ================= */}
+        <section className="px-4 py-20 sm:px-6 lg:px-8">
+
+          <div className="mx-auto max-w-7xl">
+
+            <div className="mb-10 text-center">
+
+              <p className="text-sm font-bold uppercase tracking-wider text-indigo-600">
+                Explore
               </p>
 
-              <h2 className="mt-1 text-3xl font-bold text-gray-800">
-                Latest Products
+              <h2 className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">
+                Shop by Category
               </h2>
 
-              <p className="mt-2 text-gray-500">
-                Check out the latest products from
-                our sellers.
+              <p className="mx-auto mt-3 max-w-2xl text-gray-500">
+                Explore different categories and discover products
+                that match your needs.
               </p>
+
             </div>
 
-            <button
-              onClick={() =>
-                navigate("/products")
-              }
-              className="hidden rounded-lg px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 sm:block"
-            >
-              View All →
-            </button>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+
+              {categories.map((category) => (
+                <button
+                  key={category.name}
+                  onClick={() => navigate("/products")}
+                  className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-indigo-200 hover:shadow-lg"
+                >
+
+                  <div className="flex items-center gap-5">
+
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-3xl transition group-hover:bg-indigo-100">
+                      {category.icon}
+                    </div>
+
+                    <div>
+
+                      <h3 className="text-lg font-bold text-gray-900">
+                        {category.name}
+                      </h3>
+
+                      <p className="mt-1 text-sm text-gray-500">
+                        {category.description}
+                      </p>
+
+                      <p className="mt-3 text-sm font-semibold text-indigo-600">
+                        Explore →
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                </button>
+              ))}
+
+            </div>
           </div>
+        </section>
 
-          {error && (
-            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-600">
-              {error}
-            </div>
-          )}
 
-          {loadingProducts ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {[1, 2, 3, 4].map(
-                (item) => (
-                  <div
-                    key={item}
-                    className="h-96 animate-pulse rounded-xl bg-gray-200"
-                  />
-                )
-              )}
-            </div>
-          ) : products.length === 0 ? (
-            <div className="rounded-xl bg-gray-50 p-12 text-center">
-              <div className="text-5xl">
-                📦
+        {/* ================= WHY CHOOSE US ================= */}
+        <section className="bg-gray-950 px-4 py-20 text-white sm:px-6 lg:px-8">
+
+          <div className="mx-auto max-w-7xl">
+
+            <div className="grid items-center gap-12 lg:grid-cols-2">
+
+              <div>
+
+                <p className="text-sm font-bold uppercase tracking-wider text-indigo-300">
+                  Why MultiShop?
+                </p>
+
+                <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl">
+                  Built for a better shopping experience.
+                </h2>
+
+                <p className="mt-5 max-w-xl leading-7 text-gray-400">
+                  MultiShop brings customers and sellers together
+                  on one easy-to-use platform. Discover products,
+                  compare options, add items to your wishlist,
+                  and checkout securely.
+                </p>
+
+                <div className="mt-8 space-y-5">
+
+                  <div className="flex gap-4">
+
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+                      ✓
+                    </div>
+
+                    <div>
+
+                      <h3 className="font-bold">
+                        Multiple Sellers
+                      </h3>
+
+                      <p className="mt-1 text-sm text-gray-400">
+                        Discover products from different sellers
+                        in one convenient marketplace.
+                      </p>
+
+                    </div>
+
+                  </div>
+
+
+                  <div className="flex gap-4">
+
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+                      ✓
+                    </div>
+
+                    <div>
+
+                      <h3 className="font-bold">
+                        Secure & Reliable
+                      </h3>
+
+                      <p className="mt-1 text-sm text-gray-400">
+                        Secure authentication, protected payments,
+                        and reliable order management.
+                      </p>
+
+                    </div>
+
+                  </div>
+
+
+                  <div className="flex gap-4">
+
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+                      ✓
+                    </div>
+
+                    <div>
+
+                      <h3 className="font-bold">
+                        Easy Order Tracking
+                      </h3>
+
+                      <p className="mt-1 text-sm text-gray-400">
+                        Track your orders from placement to
+                        delivery with a simple interface.
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
               </div>
 
-              <p className="mt-4 text-gray-500">
-                No products available yet.
-              </p>
+
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-5">
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-7">
+
+                  <p className="text-4xl font-extrabold text-indigo-300">
+                    100%
+                  </p>
+
+                  <p className="mt-2 font-semibold">
+                    Secure Checkout
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Safe payment experience
+                  </p>
+
+                </div>
+
+
+                <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-7">
+
+                  <p className="text-4xl font-extrabold text-indigo-300">
+                    24/7
+                  </p>
+
+                  <p className="mt-2 font-semibold">
+                    Online Shopping
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Shop whenever you want
+                  </p>
+
+                </div>
+
+
+                <div className="-mt-8 rounded-2xl border border-white/10 bg-white/5 p-7">
+
+                  <p className="text-4xl font-extrabold text-indigo-300">
+                    100+
+                  </p>
+
+                  <p className="mt-2 font-semibold">
+                    Product Choices
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Products across categories
+                  </p>
+
+                </div>
+
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-7">
+
+                  <p className="text-4xl font-extrabold text-indigo-300">
+                    Easy
+                  </p>
+
+                  <p className="mt-2 font-semibold">
+                    Order Management
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Simple and convenient shopping
+                  </p>
+
+                </div>
+
+              </div>
+
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {products.map((product) => (
-                <ProductCard
-                  key={product._id}
-                  product={product}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* Why Choose Us */}
-      <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="mb-8 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
-            Why MultiShop?
-          </p>
 
-          <h2 className="mt-1 text-3xl font-bold text-gray-800">
-            Shopping made simple
-          </h2>
-        </div>
+        {/* ================= FINAL CTA ================= */}
+        <section className="border-t bg-gray-50 px-4 py-16 text-center sm:px-6 lg:px-8">
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-2xl">
-              🔒
-            </div>
+          <div className="mx-auto max-w-3xl">
 
-            <h3 className="mt-4 font-semibold text-gray-800">
-              Secure Payments
-            </h3>
+            <h2 className="text-3xl font-extrabold text-gray-900">
+              Ready to start shopping?
+            </h2>
 
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              Secure checkout with trusted payment
-              options.
+            <p className="mt-3 text-gray-500">
+              Discover products, save your favorites, and enjoy
+              a simple shopping experience.
             </p>
+
+            <button
+              onClick={() => navigate("/products")}
+              className="mt-7 rounded-xl bg-indigo-600 px-8 py-3.5 font-bold text-white shadow-lg transition hover:bg-indigo-700"
+            >
+              Explore Products
+            </button>
+
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-2xl">
-              🚚
-            </div>
+        </section>
 
-            <h3 className="mt-4 font-semibold text-gray-800">
-              Easy Delivery
-            </h3>
-
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              Track your orders from purchase to
-              delivery.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-yellow-100 text-2xl">
-              ⭐
-            </div>
-
-            <h3 className="mt-4 font-semibold text-gray-800">
-              Quality Products
-            </h3>
-
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              Discover products from multiple
-              sellers.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-purple-100 text-2xl">
-              🛍️
-            </div>
-
-            <h3 className="mt-4 font-semibold text-gray-800">
-              Easy Shopping
-            </h3>
-
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              Search, compare and buy products
-              easily.
-            </p>
-          </div>
-        </div>
-      </section>
+      </main>
 
       <Footer />
-    </div>
+    </>
   );
 }
 

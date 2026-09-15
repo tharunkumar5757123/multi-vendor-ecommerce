@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -31,12 +32,12 @@ function Wishlist() {
 
       const response = await api.get("/wishlist");
 
-      const wishlist =
-        response.data.wishlist ||
-        response.data;
-
-      const wishlistProducts =
-        wishlist?.products || [];
+      // Backend returns:
+      // {
+      //   message: "...",
+      //   wishlist: [...]
+      // }
+      const wishlistProducts = response.data.wishlist || [];
 
       dispatch(setWishlist(wishlistProducts));
     } catch (error) {
@@ -111,9 +112,7 @@ function Wishlist() {
                   disabled={clearing}
                   className="w-fit rounded-lg border border-red-400 px-5 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {clearing
-                    ? "Clearing..."
-                    : "Clear Wishlist"}
+                  {clearing ? "Clearing..." : "Clear Wishlist"}
                 </button>
               )}
             </div>

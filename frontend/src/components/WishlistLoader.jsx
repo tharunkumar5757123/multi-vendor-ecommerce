@@ -12,32 +12,36 @@ import {
 function WishlistLoader() {
   const dispatch = useDispatch();
 
-  const { isAuthenticated, user } =
-    useSelector((state) => state.auth);
+  const { isAuthenticated, user } = useSelector(
+    (state) => state.auth
+  );
 
   useEffect(() => {
     const loadWishlist = async () => {
+      // Only customers need wishlist data
       if (
         !isAuthenticated ||
         user?.role !== "customer"
       ) {
         dispatch(setWishlist([]));
+        dispatch(setWishlistLoading(false));
         return;
       }
 
       try {
         dispatch(setWishlistLoading(true));
 
-        const response = await api.get(
-          "/wishlist"
-        );
+        const response = await api.get("/wishlist");
 
-        dispatch(
-          setWishlist(
-            response.data.wishlist?.products ||
-              []
-          )
-        );
+        // Backend response:
+        // {
+        //   message: "Wishlist fetched successfully",
+        //   wishlist: [...]
+        // }
+        const wishlistProducts =
+          response.data.wishlist || [];
+
+        dispatch(setWishlist(wishlistProducts));
       } catch (error) {
         console.error(
           "LOAD WISHLIST ERROR:",
@@ -45,11 +49,17 @@ function WishlistLoader() {
         );
 
         dispatch(setWishlist([]));
+      } finally {
+        dispatch(setWishlistLoading(false));
       }
     };
 
     loadWishlist();
-  }, [isAuthenticated, user?.role, dispatch]);
+  }, [
+    isAuthenticated,
+    user?.role,
+    dispatch,
+  ]);
 
   return null;
 }
