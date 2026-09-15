@@ -29,10 +29,11 @@ function Navbar() {
         {/* Navigation */}
         <div className="flex items-center gap-6">
 
+          {/* Customer Navigation */}
           {user?.role === "customer" && (
             <>
               <NavLink
-                to="/"
+                to="/home"
                 className="text-gray-700 hover:text-blue-600"
               >
                 Home
@@ -61,26 +62,74 @@ function Navbar() {
             </>
           )}
 
+          {/* Seller Navigation */}
           {user?.role === "seller" && (
-            <NavLink
-              to="/seller/dashboard"
-              className="text-gray-700 hover:text-blue-600"
-            >
-              Seller Dashboard
-            </NavLink>
+            <>
+              <NavLink
+                to="/seller/dashboard"
+                className="text-gray-700 hover:text-blue-600"
+              >
+                Dashboard
+              </NavLink>
+
+              <NavLink
+                to="/seller/products"
+                className="text-gray-700 hover:text-blue-600"
+              >
+                Products
+              </NavLink>
+
+              <NavLink
+                to="/seller/orders"
+                className="text-gray-700 hover:text-blue-600"
+              >
+                Orders
+              </NavLink>
+            </>
           )}
 
+          {/* Admin Navigation */}
           {user?.role === "admin" && (
-            <NavLink
-              to="/admin/dashboard"
-              className="text-gray-700 hover:text-blue-600"
-            >
-              Admin Dashboard
-            </NavLink>
+            <>
+              <NavLink
+                to="/admin/dashboard"
+                className="text-gray-700 hover:text-blue-600"
+              >
+                Dashboard
+              </NavLink>
+
+              <NavLink
+                to="/admin/users"
+                className="text-gray-700 hover:text-blue-600"
+              >
+                Users
+              </NavLink>
+
+              <NavLink
+                to="/admin/products"
+                className="text-gray-700 hover:text-blue-600"
+              >
+                Products
+              </NavLink>
+
+              <NavLink
+                to="/admin/orders"
+                className="text-gray-700 hover:text-blue-600"
+              >
+                Orders
+              </NavLink>
+
+              <NavLink
+                to="/admin/categories"
+                className="text-gray-700 hover:text-blue-600"
+              >
+                Categories
+              </NavLink>
+            </>
           )}
 
-          {/* User */}
-          <span className="text-gray-600">
+          {/* User Name */}
+          <span className="text-gray-600 font-medium">
             {user?.name}
           </span>
 

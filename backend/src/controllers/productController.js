@@ -1,12 +1,17 @@
+// Product Controller
 
-// Create Product
 const Product = require("../models/Product");
 const Category = require("../models/Category");
+
 const uploadToCloudinary = require("../utils/uploadToCloudinary");
 const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
 const generateSlug = require("../utils/generateSlug");
 
 const fs = require("fs");
+
+// ======================================================
+// Create Product
+// ======================================================
 
 const createProduct = async (req, res) => {
   try {
@@ -108,7 +113,6 @@ const createProduct = async (req, res) => {
       },
     ]);
 
-    // Response
     res.status(201).json({
       message: "Product created successfully",
       product,
@@ -123,8 +127,11 @@ const createProduct = async (req, res) => {
   }
 };
 
+// ======================================================
+// Get All Active Products
+// Customer
+// ======================================================
 
-// Get All Products
 const getProducts = async (req, res) => {
   try {
     const {
@@ -137,6 +144,7 @@ const getProducts = async (req, res) => {
       limit = 10,
     } = req.query;
 
+    // Customers see only active products
     const filter = {
       isActive: true,
     };
@@ -186,6 +194,7 @@ const getProducts = async (req, res) => {
     // Pagination
     const currentPage = Math.max(Number(page), 1);
     const perPage = Math.max(Number(limit), 1);
+
     const skip = (currentPage - 1) * perPage;
 
     // Sorting
@@ -230,12 +239,16 @@ const getProducts = async (req, res) => {
       products,
       pagination: {
         currentPage,
-        totalPages: Math.ceil(totalProducts / perPage),
+        totalPages: Math.ceil(
+          totalProducts / perPage
+        ),
         totalProducts,
         perPage,
       },
     });
   } catch (error) {
+    console.error("Get products error:", error);
+
     res.status(500).json({
       message: "Failed to fetch products",
       error: error.message,
@@ -243,7 +256,39 @@ const getProducts = async (req, res) => {
   }
 };
 
+// ======================================================
+// Admin - Get All Products
+// Includes Active + Inactive Products
+// ======================================================
+
+const getAllProductsForAdmin = async (req, res) => {
+  try {
+    const products = await Product.find({})
+      .populate("category", "name")
+      .populate("seller", "name email")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      products,
+    });
+  } catch (error) {
+    console.error(
+      "Admin get products error:",
+      error
+    );
+
+    res.status(500).json({
+      message: "Failed to fetch admin products",
+      error: error.message,
+    });
+  }
+};
+
+// ======================================================
 // Get Single Product
+// ======================================================
+
 const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
@@ -260,6 +305,11 @@ const getProductById = async (req, res) => {
       product,
     });
   } catch (error) {
+    console.error(
+      "Get single product error:",
+      error
+    );
+
     res.status(500).json({
       message: "Failed to fetch product",
       error: error.message,
@@ -267,10 +317,15 @@ const getProductById = async (req, res) => {
   }
 };
 
+// ======================================================
 // Update Product
+// ======================================================
+
 const updateProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(
+      req.params.id
+    );
 
     if (!product) {
       return res.status(404).json({
@@ -278,12 +333,15 @@ const updateProduct = async (req, res) => {
       });
     }
 
+    // Seller can update only own products
     if (
       req.user.role === "seller" &&
-      product.seller.toString() !== req.user._id.toString()
+      product.seller.toString() !==
+        req.user._id.toString()
     ) {
       return res.status(403).json({
-        message: "You can update only your own products",
+        message:
+          "You can update only your own products",
       });
     }
 
@@ -299,8 +357,10 @@ const updateProduct = async (req, res) => {
       existingImages,
     } = req.body;
 
+    // Check category
     if (category) {
-      const categoryExists = await Category.findById(category);
+      const categoryExists =
+        await Category.findById(category);
 
       if (!categoryExists) {
         return res.status(404).json({
@@ -309,11 +369,15 @@ const updateProduct = async (req, res) => {
       }
     }
 
+    // Check SKU
     if (sku && sku !== product.sku) {
-      const existingSku = await Product.findOne({
-        sku,
-        _id: { $ne: product._id },
-      });
+      const existingSku =
+        await Product.findOne({
+          sku,
+          _id: {
+            $ne: product._id,
+          },
+        });
 
       if (existingSku) {
         return res.status(400).json({
@@ -322,6 +386,7 @@ const updateProduct = async (req, res) => {
       }
     }
 
+    // Existing images
     let keptImages = [];
 
     if (existingImages) {
@@ -332,58 +397,91 @@ const updateProduct = async (req, res) => {
             : existingImages;
       } catch (error) {
         return res.status(400).json({
-          message: "Invalid existingImages format",
+          message:
+            "Invalid existingImages format",
         });
       }
     }
 
+    // Old images
     const oldImages = product.images || [];
 
+    // Images removed by user
     const imagesToDelete = oldImages.filter(
       (oldImage) =>
         !keptImages.some(
-          (keptImage) => keptImage.publicId === oldImage.publicId
+          (keptImage) =>
+            keptImage.publicId ===
+            oldImage.publicId
         )
     );
 
+    // Delete removed images from Cloudinary
     for (const image of imagesToDelete) {
       if (image.publicId) {
-        await deleteFromCloudinary(image.publicId);
+        await deleteFromCloudinary(
+          image.publicId
+        );
       }
     }
 
+    // Upload new images
     const newImages = [];
 
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        const result = await uploadToCloudinary(
-          file.buffer,
-          "multi-vendor-ecommerce/products"
-        );
+        const result =
+          await uploadToCloudinary(
+            file.path
+          );
 
         newImages.push({
           url: result.url,
           publicId: result.publicId,
         });
+
+        // Delete local file
+        if (file.path) {
+          fs.unlinkSync(file.path);
+        }
       }
     }
 
-    product.name = name ?? product.name;
-    product.description = description ?? product.description;
-    product.price = price ?? product.price;
+    // Update product fields
+    product.name =
+      name ?? product.name;
+
+    product.description =
+      description ?? product.description;
+
+    product.price =
+      price ?? product.price;
+
     product.discountPrice =
       discountPrice !== undefined
         ? discountPrice
         : product.discountPrice;
-    product.brand = brand ?? product.brand;
-    product.category = category ?? product.category;
-    product.stock = stock ?? product.stock;
-    product.sku = sku ?? product.sku;
 
-    product.images = [...keptImages, ...newImages];
+    product.brand =
+      brand ?? product.brand;
+
+    product.category =
+      category ?? product.category;
+
+    product.stock =
+      stock ?? product.stock;
+
+    product.sku =
+      sku ?? product.sku;
+
+    product.images = [
+      ...keptImages,
+      ...newImages,
+    ];
 
     await product.save();
 
+    // Populate category and seller
     await product.populate([
       {
         path: "category",
@@ -395,11 +493,16 @@ const updateProduct = async (req, res) => {
       },
     ]);
 
-    res.json({
+    res.status(200).json({
       message: "Product updated successfully",
       product,
     });
   } catch (error) {
+    console.error(
+      "Update product error:",
+      error
+    );
+
     res.status(500).json({
       message: "Failed to update product",
       error: error.message,
@@ -407,10 +510,39 @@ const updateProduct = async (req, res) => {
   }
 };
 
-// Delete Product
-const deleteProduct = async (req, res) => {
+// ======================================================
+// Admin - Activate / Deactivate Product
+// ======================================================
+
+const updateProductStatus = async (
+  req,
+  res
+) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    // Validate isActive
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({
+        message:
+          "isActive must be true or false",
+      });
+    }
+
+    const product =
+      await Product.findByIdAndUpdate(
+        id,
+        {
+          isActive,
+        },
+        {
+          returnDocument: "after",
+          runValidators: true,
+        }
+      )
+        .populate("category", "name")
+        .populate("seller", "name email");
 
     if (!product) {
       return res.status(404).json({
@@ -418,29 +550,86 @@ const deleteProduct = async (req, res) => {
       });
     }
 
-    if (
-      req.user.role === "seller" &&
-      product.seller.toString() !== req.user._id.toString()
-    ) {
-      return res.status(403).json({
-        message: "You can delete only your own products",
+    res.status(200).json({
+      success: true,
+
+      message: `Product ${
+        isActive
+          ? "activated"
+          : "deactivated"
+      } successfully`,
+
+      product,
+    });
+  } catch (error) {
+    console.error(
+      "Update product status error:",
+      error
+    );
+
+    res.status(500).json({
+      message:
+        "Failed to update product status",
+      error: error.message,
+    });
+  }
+};
+
+// ======================================================
+// Delete Product
+// ======================================================
+
+const deleteProduct = async (req, res) => {
+  try {
+    const product = await Product.findById(
+      req.params.id
+    );
+
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found",
       });
     }
 
-    if (product.images && product.images.length > 0) {
+    // Seller can delete only own products
+    if (
+      req.user.role === "seller" &&
+      product.seller.toString() !==
+        req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        message:
+          "You can delete only your own products",
+      });
+    }
+
+    // Delete images from Cloudinary
+    if (
+      product.images &&
+      product.images.length > 0
+    ) {
       for (const image of product.images) {
         if (image.publicId) {
-          await deleteFromCloudinary(image.publicId);
+          await deleteFromCloudinary(
+            image.publicId
+          );
         }
       }
     }
 
+    // Delete product
     await product.deleteOne();
 
-    res.json({
-      message: "Product deleted successfully",
+    res.status(200).json({
+      message:
+        "Product deleted successfully",
     });
   } catch (error) {
+    console.error(
+      "Delete product error:",
+      error
+    );
+
     res.status(500).json({
       message: "Failed to delete product",
       error: error.message,
@@ -448,10 +637,16 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+// ======================================================
+// Export Controllers
+// ======================================================
+
 module.exports = {
   createProduct,
   getProducts,
+  getAllProductsForAdmin,
   getProductById,
   updateProduct,
+  updateProductStatus,
   deleteProduct,
 };

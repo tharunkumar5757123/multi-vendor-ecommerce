@@ -15,6 +15,11 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleRedirect from "./components/RoleRedirect";
 
+import Users from "./pages/admin/Users";
+import Products from "./pages/admin/Products";
+
+
+
 function App() {
   return (
     <BrowserRouter>
@@ -77,6 +82,23 @@ function App() {
           }
         />
 
+
+        <Route
+  path="/admin/users"
+  element={
+    <ProtectedRoute allowedRoles={["admin"]}>
+      <Users />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/admin/products"
+  element={
+    <ProtectedRoute allowedRoles={["admin"]}>
+      <Products />
+    </ProtectedRoute>
+  }
+/>
       </Routes>
     </BrowserRouter>
   );
