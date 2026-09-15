@@ -112,12 +112,12 @@ function Home() {
                     Shop Now →
                   </button>
 
-                  <button
+                  {/* <button
                     onClick={() => navigate("/register")}
                     className="rounded-xl border border-white/30 bg-white/10 px-7 py-3.5 font-bold text-white backdrop-blur transition hover:bg-white/20"
                   >
                     Create Account
-                  </button>
+                  </button> */}
 
                 </div>
 
