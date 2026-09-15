@@ -15,11 +15,11 @@ const authorizeRoles = require("../middleware/roleMiddleware");
 
 const router = express.Router();
 
-
 // =====================================
 // CUSTOMER
 // =====================================
 
+// Create order
 router.post(
   "/",
   protect,
@@ -27,6 +27,17 @@ router.post(
   createOrder
 );
 
+// Get my orders
+// Supports: GET /api/orders
+router.get(
+  "/",
+  protect,
+  authorizeRoles("customer"),
+  getMyOrders
+);
+
+// Keep this route for compatibility
+// Supports: GET /api/orders/my-orders
 router.get(
   "/my-orders",
   protect,
@@ -34,13 +45,13 @@ router.get(
   getMyOrders
 );
 
+// Cancel order
 router.put(
   "/:id/cancel",
   protect,
   authorizeRoles("customer"),
   cancelOrder
 );
-
 
 // =====================================
 // SELLER
@@ -60,7 +71,6 @@ router.put(
   updateOrderStatusBySeller
 );
 
-
 // =====================================
 // ADMIN
 // =====================================
@@ -72,7 +82,6 @@ router.get(
   getAllOrders
 );
 
-
 // =====================================
 // SINGLE ORDER
 // Keep dynamic route LAST
@@ -83,6 +92,5 @@ router.get(
   protect,
   getOrderById
 );
-
 
 module.exports = router;
