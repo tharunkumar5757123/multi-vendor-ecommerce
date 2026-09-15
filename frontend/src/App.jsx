@@ -13,6 +13,7 @@ import SellerDashboard from "./pages/seller/SellerDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import RoleRedirect from "./components/RoleRedirect";
 
 function App() {
   return (
@@ -36,10 +37,17 @@ function App() {
           element={<Unauthorized />}
         />
 
-        {/* Customer */}
+        {/* Root - redirect based on role */}
 
         <Route
           path="/"
+          element={<RoleRedirect />}
+        />
+
+        {/* Customer */}
+
+        <Route
+          path="/home"
           element={
             <ProtectedRoute allowedRoles={["customer"]}>
               <Home />

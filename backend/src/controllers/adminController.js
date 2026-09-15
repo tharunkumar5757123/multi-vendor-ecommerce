@@ -85,6 +85,52 @@ const getAdminDashboard = async (req, res) => {
   }
 };
 
+
+// Get all users
+const getAllUsers = async (req, res, next) => {
+  try {
+    const users = await User.find({})
+      .select("-password")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      users,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update user active status
+const updateUserStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    const user = await User.findById(id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    user.isActive = isActive;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "User status updated successfully",
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAdminDashboard,
+  getAllUsers,
+  updateUserStatus,
 };

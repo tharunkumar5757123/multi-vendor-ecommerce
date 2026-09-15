@@ -7,7 +7,6 @@ const api = axios.create({
   },
 });
 
-// Add JWT token automatically to every request
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -23,7 +22,6 @@ api.interceptors.request.use(
   }
 );
 
-// Handle expired/invalid token
 api.interceptors.response.use(
   (response) => response,
   (error) => {
