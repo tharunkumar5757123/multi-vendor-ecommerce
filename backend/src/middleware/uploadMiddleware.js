@@ -2,12 +2,20 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-const productUploadDir = path.join(__dirname, "../../uploads/products");
+const uploadDirs = {
+  images: path.join(__dirname, "../../uploads/products"),
+  profileImage: path.join(__dirname, "../../uploads/profiles"),
+};
+
+const getUploadDir = (fieldname) =>
+  uploadDirs[fieldname] || path.join(__dirname, "../../uploads");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    fs.mkdirSync(productUploadDir, { recursive: true });
-    cb(null, productUploadDir);
+    const uploadDir = getUploadDir(file.fieldname);
+
+    fs.mkdirSync(uploadDir, { recursive: true });
+    cb(null, uploadDir);
   },
 
   filename: function (req, file, cb) {

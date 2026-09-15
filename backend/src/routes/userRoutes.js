@@ -2,6 +2,7 @@ const express = require("express");
 
 const protect = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
+const upload = require("../middleware/uploadMiddleware");
 
 const {
   getMyProfile,
@@ -19,6 +20,7 @@ router.get("/profile", protect, getMyProfile);
 router.put(
   "/profile",
   protect,
+  upload.single("profileImage"),
   updateProfile
 );
 

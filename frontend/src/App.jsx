@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AuthLoader from "./components/AuthLoader";
 import WishlistLoader from "./components/WishlistLoader";
 
 // Customer
@@ -45,6 +46,9 @@ function App() {
         position="top-center"
         reverseOrder={false}
       />
+
+      {/* Refreshes logged-in user data after page reload */}
+      <AuthLoader />
 
       {/* Loads wishlist data when customer is logged in */}
       <WishlistLoader />
@@ -160,7 +164,13 @@ function App() {
         <Route
           path="/profile"
           element={
-            <ProtectedRoute allowedRoles={["customer"]}>
+            <ProtectedRoute
+              allowedRoles={[
+                "customer",
+                "seller",
+                "admin",
+              ]}
+            >
               <Profile />
             </ProtectedRoute>
           }

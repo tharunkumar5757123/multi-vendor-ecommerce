@@ -4,6 +4,9 @@ import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../services/api";
 
+
+import Navbar from "../components/Navbar";
+
 function Register() {
   const navigate = useNavigate();
 
@@ -64,6 +67,8 @@ function Register() {
   };
 
   return (
+    <>
+    <Navbar />
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
 
@@ -161,6 +166,7 @@ function Register() {
 
       </div>
     </div>
+    </>
   );
 }
 

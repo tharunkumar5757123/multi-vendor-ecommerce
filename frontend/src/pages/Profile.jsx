@@ -17,6 +17,8 @@ function Profile() {
   const dispatch = useDispatch();
 
   const user = useSelector((state) => state.auth.user);
+  const token = useSelector((state) => state.auth.token);
+  const isCustomer = user?.role === "customer";
 
   const [addresses, setAddresses] = useState([]);
 
@@ -41,6 +43,10 @@ function Profile() {
     name: user?.name || "",
     phone: user?.phone || "",
   });
+  const [profileImage, setProfileImage] =
+    useState(null);
+  const [profileImagePreview, setProfileImagePreview] =
+    useState(user?.profileImage || "");
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -83,14 +89,16 @@ function Profile() {
       setError("");
 
       try {
-        await fetchAddresses();
+        if (isCustomer) {
+          await fetchAddresses();
+        }
       } finally {
         setLoading(false);
       }
     };
 
     loadProfile();
-  }, []);
+  }, [isCustomer]);
 
   // Profile input
   const handleProfileChange = (e) => {
@@ -98,6 +106,36 @@ function Profile() {
       ...profileForm,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleProfileImageChange = (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setError("Only image files are allowed.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Profile image must be smaller than 5MB.");
+      e.target.value = "";
+      return;
+    }
+
+    setError("");
+    setProfileImage(file);
+    setProfileImagePreview(URL.createObjectURL(file));
+  };
+
+  const triggerProfileImageInput = () => {
+    document
+      .getElementById("profile-image-input")
+      ?.click();
   };
 
   // Update profile
@@ -109,21 +147,46 @@ function Profile() {
       setError("");
       setSuccess("");
 
-      const response = await api.put("/users/profile", {
-        name: profileForm.name,
-        phone: profileForm.phone,
-      });
+      const formData = new FormData();
+
+      formData.append("name", profileForm.name);
+      formData.append("phone", profileForm.phone);
+
+      if (profileImage) {
+        formData.append("profileImage", profileImage);
+      }
+
+      const response = await api.put(
+        "/users/profile",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
       const updatedUser =
         response.data.user ||
         response.data;
 
       if (updatedUser) {
-        dispatch(loginSuccess(updatedUser));
+        const normalizedUser = {
+          ...updatedUser,
+          role: updatedUser.role?.toLowerCase(),
+        };
 
-        localStorage.setItem(
-          "user",
-          JSON.stringify(updatedUser)
+        dispatch(
+          loginSuccess({
+            user: normalizedUser,
+            token:
+              token || localStorage.getItem("token"),
+          })
+        );
+
+        setProfileImage(null);
+        setProfileImagePreview(
+          normalizedUser.profileImage || ""
         );
       }
 
@@ -133,6 +196,7 @@ function Profile() {
 
       setError(
         error.response?.data?.message ||
+          error.response?.data?.error ||
           "Failed to update profile"
       );
     } finally {
@@ -403,10 +467,44 @@ function Profile() {
             {/* Profile */}
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <div className="mb-6 text-center">
-                <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-indigo-100 text-3xl font-bold text-indigo-600">
-                  {user?.name
-                    ?.charAt(0)
-                    ?.toUpperCase() || "U"}
+                <div className="relative mx-auto h-24 w-24">
+                  <button
+                    type="button"
+                    onClick={triggerProfileImageInput}
+                    className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-indigo-100 text-3xl font-bold text-indigo-600 ring-4 ring-white transition hover:ring-indigo-100"
+                    aria-label="Change profile image"
+                    title="Change profile image"
+                  >
+                    {profileImagePreview ? (
+                      <img
+                        src={profileImagePreview}
+                        alt={user?.name || "Profile"}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      user?.name
+                        ?.charAt(0)
+                        ?.toUpperCase() || "U"
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={triggerProfileImageInput}
+                    className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-indigo-600 text-xl font-bold leading-none text-white shadow-md transition hover:bg-indigo-700"
+                    aria-label="Add profile image"
+                    title="Add profile image"
+                  >
+                    +
+                  </button>
+
+                  <input
+                    id="profile-image-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfileImageChange}
+                    className="hidden"
+                  />
                 </div>
 
                 <h2 className="mt-4 text-xl font-bold text-gray-900">
@@ -630,6 +728,7 @@ function Profile() {
           </div>
 
           {/* Addresses */}
+          {isCustomer && (
           <div className="mt-8">
             <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -818,6 +917,7 @@ function Profile() {
               </div>
             )}
           </div>
+          )}
         </section>
       </main>
 

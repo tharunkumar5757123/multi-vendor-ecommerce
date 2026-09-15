@@ -1,5 +1,7 @@
 const bcrypt = require("bcryptjs");
+const fs = require("fs");
 const User = require("../models/User");
+const uploadToCloudinary = require("../utils/uploadToCloudinary");
 
 // Get logged-in user's profile
 const getMyProfile = async (req, res) => {
@@ -34,6 +36,19 @@ const updateProfile = async (req, res) => {
       user.phone = phone.trim();
     }
 
+    if (req.file) {
+      const result = await uploadToCloudinary(
+        req.file.path,
+        "multi-vendor-ecommerce/profiles"
+      );
+
+      user.profileImage = result.url;
+
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    }
+
     const updatedUser = await user.save();
 
     res.status(200).json({
@@ -51,8 +66,20 @@ const updateProfile = async (req, res) => {
   } catch (error) {
     console.error("Update profile error:", error);
 
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (fileError) {
+        console.error(
+          "Profile image cleanup error:",
+          fileError.message
+        );
+      }
+    }
+
     res.status(500).json({
       message: "Failed to update profile",
+      error: error.message,
     });
   }
 };

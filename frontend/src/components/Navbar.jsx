@@ -6,6 +6,45 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { logout } from "../redux/slices/authSlice";
 import { showToast } from "../utils/showToast";
 
+function ThemeToggle({
+  theme,
+  onToggle,
+  className = "",
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-md ${className}`}
+      aria-label="Toggle theme"
+      title="Toggle theme"
+    >
+      {theme === "dark" ? "Light" : "Dark"}
+    </button>
+  );
+}
+
+function UserAvatar({
+  user,
+  className = "h-9 w-9",
+}) {
+  return (
+    <div
+      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-100 font-bold text-indigo-700 ${className}`}
+    >
+      {user?.profileImage ? (
+        <img
+          src={user.profileImage}
+          alt={user.name || "Profile"}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        user?.name?.charAt(0)?.toUpperCase() || "U"
+      )}
+    </div>
+  );
+}
+
 function Navbar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -53,18 +92,6 @@ function Navbar() {
         ? "text-indigo-600"
         : "text-gray-700 hover:text-indigo-600"
     }`;
-
-  const ThemeToggle = ({ className = "" }) => (
-    <button
-      type="button"
-      onClick={toggleTheme}
-      className={`rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-md ${className}`}
-      aria-label="Toggle theme"
-      title="Toggle theme"
-    >
-      {theme === "dark" ? "Light" : "Dark"}
-    </button>
-  );
 
   return (
     <nav className="sticky top-0 z-50 border-b border-gray-100 bg-white shadow-sm">
@@ -127,7 +154,10 @@ function Navbar() {
                   Register
                 </NavLink>
 
-                <ThemeToggle />
+                <ThemeToggle
+                  theme={theme}
+                  onToggle={toggleTheme}
+                />
               </>
             )}
 
@@ -203,6 +233,13 @@ function Navbar() {
                   >
                     Orders
                   </NavLink>
+
+                  <NavLink
+                    to="/profile"
+                    className={navLinkClass}
+                  >
+                    Profile
+                  </NavLink>
                 </>
               )}
 
@@ -244,17 +281,31 @@ function Navbar() {
                   >
                     Categories
                   </NavLink>
+
+                  <NavLink
+                    to="/profile"
+                    className={navLinkClass}
+                  >
+                    Profile
+                  </NavLink>
                 </>
               )}
 
             {/* ================= USER INFO ================= */}
             {isAuthenticated && user && (
               <div className="flex items-center gap-3 border-l border-gray-200 pl-5">
-                <ThemeToggle />
+                <ThemeToggle
+                  theme={theme}
+                  onToggle={toggleTheme}
+                />
 
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 font-bold text-indigo-700">
-                  {user.name?.charAt(0)?.toUpperCase()}
-                </div>
+                <NavLink
+                  to="/profile"
+                  className="rounded-full outline-none ring-offset-2 transition focus:ring-2 focus:ring-indigo-500"
+                  title="Profile"
+                >
+                  <UserAvatar user={user} />
+                </NavLink>
 
                 <div className="hidden xl:block">
                   <p className="max-w-[120px] truncate text-sm font-semibold text-gray-900">
@@ -352,7 +403,11 @@ function Navbar() {
                   </NavLink>
 
                   <div className="mt-2 flex gap-3 border-t border-gray-100 pt-4">
-                    <ThemeToggle className="flex-1" />
+                    <ThemeToggle
+                      theme={theme}
+                      onToggle={toggleTheme}
+                      className="flex-1"
+                    />
 
                     <NavLink
                       to="/login"
@@ -454,6 +509,14 @@ function Navbar() {
                     >
                       Orders
                     </NavLink>
+
+                    <NavLink
+                      to="/profile"
+                      onClick={closeMobileMenu}
+                      className={navLinkClass}
+                    >
+                      Profile
+                    </NavLink>
                   </>
                 )}
 
@@ -500,6 +563,14 @@ function Navbar() {
                     >
                       Categories
                     </NavLink>
+
+                    <NavLink
+                      to="/profile"
+                      onClick={closeMobileMenu}
+                      className={navLinkClass}
+                    >
+                      Profile
+                    </NavLink>
                   </>
                 )}
 
@@ -508,11 +579,17 @@ function Navbar() {
                 <div className="mt-3 border-t border-gray-100 pt-4">
 
                   <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 font-bold text-indigo-700">
-                      {user.name
-                        ?.charAt(0)
-                        ?.toUpperCase()}
-                    </div>
+                    <NavLink
+                      to="/profile"
+                      onClick={closeMobileMenu}
+                      className="rounded-full outline-none ring-offset-2 transition focus:ring-2 focus:ring-indigo-500"
+                      title="Profile"
+                    >
+                      <UserAvatar
+                        user={user}
+                        className="h-10 w-10"
+                      />
+                    </NavLink>
 
                     <div>
                       <p className="font-semibold text-gray-900">

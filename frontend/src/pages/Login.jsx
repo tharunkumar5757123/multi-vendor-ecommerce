@@ -4,6 +4,10 @@ import { useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import toast from "react-hot-toast";
 
+
+import Navbar from "../components/Navbar";
+
+
 import { loginSuccess } from "../redux/slices/authSlice";
 import api from "../services/api";
 
@@ -98,8 +102,10 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
+    <>
+      <Navbar />
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
 
         {/* Heading */}
         <h1 className="text-3xl font-bold text-center text-gray-800">
@@ -179,6 +185,8 @@ function Login() {
 
       </div>
     </div>
+
+    </>
   );
 }
 
