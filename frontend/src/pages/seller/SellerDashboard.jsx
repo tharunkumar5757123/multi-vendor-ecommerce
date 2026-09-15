@@ -1,20 +1,16 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 
-import Navbar from "../../components/Navbar";
+import { logout } from "../../redux/slices/authSlice";
 import api from "../../services/api";
 
 function SellerDashboard() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  const [dashboard, setDashboard] = useState({
-    totalProducts: 0,
-    totalOrders: 0,
-    pendingItems: 0,
-    deliveredItems: 0,
-    totalSales: 0,
-  });
+  const [dashboard, setDashboard] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -24,27 +20,19 @@ function SellerDashboard() {
       setLoading(true);
       setError("");
 
-      const response = await api.get(
-        "/sellers/dashboard"
+      const response = await api.get("/sellers/dashboard");
+
+      setDashboard(
+        response.data.dashboard || response.data
       );
-
-      const data = response.data;
-
-      setDashboard({
-        totalProducts: data.totalProducts || 0,
-        totalOrders: data.totalOrders || 0,
-        pendingItems: data.pendingItems || 0,
-        deliveredItems: data.deliveredItems || 0,
-        totalSales: data.totalSales || 0,
-      });
-    } catch (error) {
+    } catch (err) {
       console.error(
         "SELLER DASHBOARD ERROR:",
-        error
+        err
       );
 
       setError(
-        error.response?.data?.message ||
+        err.response?.data?.message ||
           "Failed to load seller dashboard"
       );
     } finally {
@@ -56,117 +44,211 @@ function SellerDashboard() {
     fetchDashboard();
   }, []);
 
+  // Logout
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/login");
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-gray-600">
-          Loading dashboard...
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-500 text-lg">
+          Loading seller dashboard...
         </p>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-100">
-      <Navbar />
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+          <h2 className="text-xl font-bold text-red-600">
+            Unable to load dashboard
+          </h2>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-800">
-            Seller Dashboard
-          </h1>
-
-          <p className="text-gray-600 mt-2">
-            Manage your products and orders
-          </p>
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="mb-6 bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg">
+          <p className="text-gray-500 mt-2">
             {error}
+          </p>
+
+          <button
+            type="button"
+            onClick={fetchDashboard}
+            className="mt-5 bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const stats = dashboard?.stats || dashboard || {};
+
+  const totalProducts =
+    stats.totalProducts || 0;
+
+  const activeProducts =
+    stats.activeProducts || 0;
+
+  const totalOrders =
+    stats.totalOrders || 0;
+
+  const totalRevenue =
+    stats.totalRevenue || 0;
+
+  const pendingOrders =
+    stats.pendingOrders || 0;
+
+  const deliveredOrders =
+    stats.deliveredOrders || 0;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+
+      {/* Header */}
+      <header className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 py-5 flex items-center justify-between">
+
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Seller Dashboard
+            </h1>
+
+            <p className="text-gray-500 mt-1">
+              Manage your products and orders
+            </p>
           </div>
-        )}
+
+          <div className="flex items-center gap-3">
+
+            {/* Add Product */}
+            <button
+              type="button"
+              onClick={() =>
+                navigate("/seller/products/add")
+              }
+              className="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-blue-700"
+            >
+              + Add Product
+            </button>
+
+            {/* Logout */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="bg-red-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-red-700 transition"
+            >
+              Logout
+            </button>
+
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-8">
 
         {/* Statistics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
 
           {/* Products */}
-          <div className="bg-white rounded-xl shadow p-6">
-            <p className="text-gray-500 text-sm">
-              Total Products
-            </p>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between">
 
-            <h2 className="text-3xl font-bold text-blue-600 mt-2">
-              {dashboard.totalProducts}
-            </h2>
+              <div>
+                <p className="text-sm text-gray-500">
+                  Total Products
+                </p>
 
-            <p className="text-gray-500 text-sm mt-2">
-              Products you sell
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  {totalProducts}
+                </p>
+              </div>
+
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-2xl">
+                📦
+              </div>
+
+            </div>
+
+            <p className="text-sm text-green-600 mt-4">
+              {activeProducts} active
             </p>
           </div>
 
           {/* Orders */}
-          <div className="bg-white rounded-xl shadow p-6">
-            <p className="text-gray-500 text-sm">
-              Total Orders
-            </p>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between">
 
-            <h2 className="text-3xl font-bold text-indigo-600 mt-2">
-              {dashboard.totalOrders}
-            </h2>
+              <div>
+                <p className="text-sm text-gray-500">
+                  Total Orders
+                </p>
 
-            <p className="text-gray-500 text-sm mt-2">
-              Orders containing your products
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  {totalOrders}
+                </p>
+              </div>
+
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-2xl">
+                🛒
+              </div>
+
+            </div>
+
+            <p className="text-sm text-orange-600 mt-4">
+              {pendingOrders} pending
             </p>
           </div>
 
-          {/* Pending */}
-          <div className="bg-white rounded-xl shadow p-6">
-            <p className="text-gray-500 text-sm">
-              Pending Items
-            </p>
+          {/* Revenue */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between">
 
-            <h2 className="text-3xl font-bold text-yellow-600 mt-2">
-              {dashboard.pendingItems}
-            </h2>
+              <div>
+                <p className="text-sm text-gray-500">
+                  Total Revenue
+                </p>
 
-            <p className="text-gray-500 text-sm mt-2">
-              Items awaiting delivery
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  ₹{Number(totalRevenue).toFixed(2)}
+                </p>
+              </div>
+
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-2xl">
+                ₹
+              </div>
+
+            </div>
+
+            <p className="text-sm text-gray-500 mt-4">
+              From your orders
             </p>
           </div>
 
           {/* Delivered */}
-          <div className="bg-white rounded-xl shadow p-6">
-            <p className="text-gray-500 text-sm">
-              Delivered Items
-            </p>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between">
 
-            <h2 className="text-3xl font-bold text-green-600 mt-2">
-              {dashboard.deliveredItems}
-            </h2>
+              <div>
+                <p className="text-sm text-gray-500">
+                  Delivered
+                </p>
 
-            <p className="text-gray-500 text-sm mt-2">
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  {deliveredOrders}
+                </p>
+              </div>
+
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-2xl">
+                ✓
+              </div>
+
+            </div>
+
+            <p className="text-sm text-green-600 mt-4">
               Successfully delivered
-            </p>
-          </div>
-
-          {/* Sales */}
-          <div className="bg-white rounded-xl shadow p-6">
-            <p className="text-gray-500 text-sm">
-              Total Sales
-            </p>
-
-            <h2 className="text-3xl font-bold text-purple-600 mt-2">
-              ₹{Number(
-                dashboard.totalSales
-              ).toFixed(2)}
-            </h2>
-
-            <p className="text-gray-500 text-sm mt-2">
-              Your product sales
             </p>
           </div>
 
@@ -174,130 +256,115 @@ function SellerDashboard() {
 
         {/* Quick Actions */}
         <div className="mt-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+
+          <h2 className="text-xl font-bold text-gray-900 mb-5">
             Quick Actions
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-            {/* Products */}
+            {/* Manage Products */}
             <button
+              type="button"
               onClick={() =>
                 navigate("/seller/products")
               }
-              className="bg-white rounded-xl shadow p-6 text-left hover:shadow-lg transition"
+              className="bg-white rounded-xl shadow-sm p-6 text-left hover:shadow-md transition"
             >
-              <h3 className="text-xl font-semibold text-gray-800">
+              <div className="text-3xl mb-4">
+                📦
+              </div>
+
+              <h3 className="font-bold text-lg text-gray-900">
                 Manage Products
               </h3>
 
-              <p className="text-gray-500 mt-2">
-                View, edit and delete your products.
+              <p className="text-gray-500 text-sm mt-1">
+                View, edit and manage your products.
               </p>
-
-              <span className="inline-block mt-4 text-blue-600 font-medium">
-                View Products →
-              </span>
             </button>
 
             {/* Add Product */}
             <button
+              type="button"
               onClick={() =>
                 navigate("/seller/products/add")
               }
-              className="bg-white rounded-xl shadow p-6 text-left hover:shadow-lg transition"
+              className="bg-white rounded-xl shadow-sm p-6 text-left hover:shadow-md transition"
             >
-              <h3 className="text-xl font-semibold text-gray-800">
+              <div className="text-3xl mb-4">
+                ➕
+              </div>
+
+              <h3 className="font-bold text-lg text-gray-900">
                 Add Product
               </h3>
 
-              <p className="text-gray-500 mt-2">
+              <p className="text-gray-500 text-sm mt-1">
                 Add a new product to your store.
               </p>
-
-              <span className="inline-block mt-4 text-green-600 font-medium">
-                Add Product →
-              </span>
             </button>
 
-            {/* Orders */}
+            {/* Manage Orders */}
             <button
+              type="button"
               onClick={() =>
                 navigate("/seller/orders")
               }
-              className="bg-white rounded-xl shadow p-6 text-left hover:shadow-lg transition"
+              className="bg-white rounded-xl shadow-sm p-6 text-left hover:shadow-md transition"
             >
-              <h3 className="text-xl font-semibold text-gray-800">
+              <div className="text-3xl mb-4">
+                🚚
+              </div>
+
+              <h3 className="font-bold text-lg text-gray-900">
                 Manage Orders
               </h3>
 
-              <p className="text-gray-500 mt-2">
-                View orders and update product status.
+              <p className="text-gray-500 text-sm mt-1">
+                View and update your customer orders.
               </p>
-
-              <span className="inline-block mt-4 text-purple-600 font-medium">
-                View Orders →
-              </span>
             </button>
 
           </div>
         </div>
 
-        {/* Seller Workflow */}
-        <div className="mt-8 bg-white rounded-xl shadow p-6">
-          <h2 className="text-2xl font-bold text-gray-800">
-            Seller Workflow
+        {/* Performance */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mt-8">
+
+          <h2 className="text-xl font-bold text-gray-900">
+            Store Performance
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
 
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                1
-              </div>
+            <div>
+              <p className="text-sm text-gray-500">
+                Active Products
+              </p>
 
-              <p className="font-medium mt-3">
-                Add Product
+              <p className="text-2xl font-bold mt-1">
+                {activeProducts}
               </p>
             </div>
 
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
-                2
-              </div>
+            <div>
+              <p className="text-sm text-gray-500">
+                Pending Orders
+              </p>
 
-              <p className="font-medium mt-3">
-                Customer Orders
+              <p className="text-2xl font-bold mt-1">
+                {pendingOrders}
               </p>
             </div>
 
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold">
-                3
-              </div>
-
-              <p className="font-medium mt-3">
-                Confirm Order
+            <div>
+              <p className="text-sm text-gray-500">
+                Delivered Orders
               </p>
-            </div>
 
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
-                4
-              </div>
-
-              <p className="font-medium mt-3">
-                Ship Product
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold">
-                5
-              </div>
-
-              <p className="font-medium mt-3">
-                Delivered
+              <p className="text-2xl font-bold mt-1">
+                {deliveredOrders}
               </p>
             </div>
 

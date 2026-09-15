@@ -1,0 +1,677 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
+import Loader from "../components/Loader";
+import AddressForm from "../components/AddressForm";
+import api from "../services/api";
+
+function Checkout() {
+  const navigate = useNavigate();
+
+  const [cart, setCart] = useState(null);
+  const [addresses, setAddresses] = useState([]);
+
+  const [selectedAddress, setSelectedAddress] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cod");
+
+  const [loading, setLoading] = useState(true);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [orderLoading, setOrderLoading] = useState(false);
+
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [error, setError] = useState("");
+
+  // Fetch cart and addresses
+  const fetchCheckoutData = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const [cartResponse, addressResponse] =
+        await Promise.all([
+          api.get("/cart"),
+          api.get("/addresses"),
+        ]);
+
+      const cartData =
+        cartResponse.data.cart || cartResponse.data;
+
+      const addressData =
+        addressResponse.data.addresses ||
+        addressResponse.data ||
+        [];
+
+      setCart(cartData);
+      setAddresses(addressData);
+
+      // Select default address first
+      const defaultAddress = addressData.find(
+        (address) => address.isDefault
+      );
+
+      if (defaultAddress) {
+        setSelectedAddress(defaultAddress._id);
+      } else if (addressData.length > 0) {
+        setSelectedAddress(addressData[0]._id);
+      }
+    } catch (error) {
+      console.error("Checkout data error:", error);
+
+      setError(
+        error.response?.data?.message ||
+          "Failed to load checkout details"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCheckoutData();
+  }, []);
+
+  // Add address
+  const handleAddAddress = async (formData) => {
+    try {
+      setAddressLoading(true);
+
+      const response = await api.post(
+        "/addresses",
+        formData
+      );
+
+      const newAddress =
+        response.data.address || response.data;
+
+      setAddresses((previous) => [
+        ...previous,
+        newAddress,
+      ]);
+
+      setSelectedAddress(newAddress._id);
+      setShowAddressForm(false);
+    } catch (error) {
+      console.error("Add address error:", error);
+
+      alert(
+        error.response?.data?.message ||
+          "Failed to add address"
+      );
+    } finally {
+      setAddressLoading(false);
+    }
+  };
+
+  // Calculate totals
+  const cartItems = cart?.items || [];
+
+  const getProduct = (item) => item.product || {};
+
+  const getPrice = (product) => {
+    if (
+      product.discountPrice &&
+      product.discountPrice < product.price
+    ) {
+      return Number(product.discountPrice);
+    }
+
+    return Number(product.price || 0);
+  };
+
+  const subtotal = cartItems.reduce((total, item) => {
+    const product = getProduct(item);
+
+    return total + getPrice(product) * item.quantity;
+  }, 0);
+
+  const shipping = subtotal >= 1000 ? 0 : 50;
+
+  const tax = subtotal * 0.05;
+
+  const total = subtotal + shipping + tax;
+
+  // Place order
+  const handlePlaceOrder = async () => {
+    if (!selectedAddress) {
+      alert("Please select a delivery address");
+      return;
+    }
+
+    if (cartItems.length === 0) {
+      alert("Your cart is empty");
+      navigate("/products");
+      return;
+    }
+
+    try {
+      setOrderLoading(true);
+
+      const orderResponse = await api.post("/orders", {
+        addressId: selectedAddress,
+        paymentMethod,
+      });
+
+      const order =
+        orderResponse.data.order ||
+        orderResponse.data;
+
+      // COD
+      if (paymentMethod === "cod") {
+        const orderId =
+          order?._id || order?.id || order?.orderId;
+
+        if (orderId) {
+          navigate(`/orders/${orderId}`);
+        } else {
+          navigate("/orders");
+        }
+
+        return;
+      }
+
+      // Online payment
+      const orderId =
+        order?._id || order?.id || order?.orderId;
+
+      if (!orderId) {
+        throw new Error(
+          "Order ID was not returned by server"
+        );
+      }
+
+      const paymentResponse = await api.post(
+        "/payments/create-checkout-session",
+        {
+          orderId,
+        }
+      );
+
+      const checkoutUrl =
+        paymentResponse.data.url ||
+        paymentResponse.data.checkoutUrl;
+
+      if (!checkoutUrl) {
+        throw new Error(
+          "Payment checkout URL was not returned"
+        );
+      }
+
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      console.error("Place order error:", error);
+
+      alert(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to place order"
+      );
+    } finally {
+      setOrderLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Loader />
+        </div>
+
+        <Footer />
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Navbar />
+
+        <main className="flex min-h-[60vh] items-center justify-center bg-gray-50 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-sm">
+            <div className="mb-4 text-5xl">⚠️</div>
+
+            <h2 className="mb-3 text-2xl font-bold text-gray-900">
+              Checkout Error
+            </h2>
+
+            <p className="mb-6 text-gray-500">
+              {error}
+            </p>
+
+            <button
+              onClick={fetchCheckoutData}
+              className="rounded-lg bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </main>
+
+        <Footer />
+      </>
+    );
+  }
+
+  // Empty cart
+  if (cartItems.length === 0) {
+    return (
+      <>
+        <Navbar />
+
+        <main className="flex min-h-[60vh] items-center justify-center bg-gray-50 px-4">
+          <div className="text-center">
+            <div className="mb-4 text-6xl">🛒</div>
+
+            <h2 className="mb-3 text-2xl font-bold text-gray-900">
+              Your Cart is Empty
+            </h2>
+
+            <p className="mb-6 text-gray-500">
+              Add some products before proceeding to checkout.
+            </p>
+
+            <button
+              onClick={() => navigate("/products")}
+              className="rounded-lg bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-700"
+            >
+              Browse Products
+            </button>
+          </div>
+        </main>
+
+        <Footer />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Navbar />
+
+      <main className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <section className="bg-gray-900 px-4 py-10 text-white">
+          <div className="mx-auto max-w-7xl">
+            <p className="mb-2 text-sm font-medium text-indigo-300">
+              SECURE CHECKOUT
+            </p>
+
+            <h1 className="text-3xl font-bold md:text-4xl">
+              Checkout
+            </h1>
+
+            <p className="mt-2 text-gray-300">
+              Complete your order securely.
+            </p>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-4 py-8">
+          <div className="grid gap-8 lg:grid-cols-3">
+            {/* Left Side */}
+            <div className="space-y-6 lg:col-span-2">
+              {/* Address */}
+              <div className="rounded-2xl bg-white p-6 shadow-sm">
+                <div className="mb-5 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      Delivery Address
+                    </h2>
+
+                    <p className="mt-1 text-sm text-gray-500">
+                      Choose where you want your order delivered.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      setShowAddressForm(
+                        (previous) => !previous
+                      )
+                    }
+                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                  >
+                    {showAddressForm
+                      ? "Cancel"
+                      : "+ Add Address"}
+                  </button>
+                </div>
+
+                {/* Add Address Form */}
+                {showAddressForm && (
+                  <div className="mb-6 rounded-xl border border-indigo-100 bg-indigo-50 p-5">
+                    <h3 className="mb-4 font-semibold text-gray-900">
+                      Add New Address
+                    </h3>
+
+                    <AddressForm
+                      onSubmit={handleAddAddress}
+                      onCancel={() =>
+                        setShowAddressForm(false)
+                      }
+                      loading={addressLoading}
+                    />
+                  </div>
+                )}
+
+                {/* Addresses */}
+                {addresses.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center">
+                    <p className="mb-4 text-gray-500">
+                      You don't have any saved addresses.
+                    </p>
+
+                    {!showAddressForm && (
+                      <button
+                        onClick={() =>
+                          setShowAddressForm(true)
+                        }
+                        className="rounded-lg bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-700"
+                      >
+                        Add Delivery Address
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {addresses.map((address) => (
+                      <label
+                        key={address._id}
+                        className={`block cursor-pointer rounded-xl border-2 p-4 transition ${
+                          selectedAddress === address._id
+                            ? "border-indigo-600 bg-indigo-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="flex gap-3">
+                          <input
+                            type="radio"
+                            name="address"
+                            value={address._id}
+                            checked={
+                              selectedAddress ===
+                              address._id
+                            }
+                            onChange={(e) =>
+                              setSelectedAddress(
+                                e.target.value
+                              )
+                            }
+                            className="mt-1 h-4 w-4 accent-indigo-600"
+                          />
+
+                          <div className="flex-1">
+                            <div className="mb-1 flex flex-wrap items-center gap-2">
+                              <p className="font-bold text-gray-900">
+                                {address.fullName}
+                              </p>
+
+                              {address.isDefault && (
+                                <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
+                                  Default
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="text-sm text-gray-600">
+                              {address.phone}
+                            </p>
+
+                            <p className="mt-2 text-sm leading-6 text-gray-600">
+                              {address.addressLine1}
+                              {address.addressLine2 &&
+                                `, ${address.addressLine2}`}
+                              , {address.city},{" "}
+                              {address.state} -{" "}
+                              {address.postalCode},{" "}
+                              {address.country}
+                            </p>
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Method */}
+              <div className="rounded-2xl bg-white p-6 shadow-sm">
+                <h2 className="mb-2 text-xl font-bold text-gray-900">
+                  Payment Method
+                </h2>
+
+                <p className="mb-5 text-sm text-gray-500">
+                  Select how you want to pay for your order.
+                </p>
+
+                <div className="space-y-3">
+                  {/* COD */}
+                  <label
+                    className={`block cursor-pointer rounded-xl border-2 p-4 ${
+                      paymentMethod === "cod"
+                        ? "border-indigo-600 bg-indigo-50"
+                        : "border-gray-200"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="cod"
+                        checked={paymentMethod === "cod"}
+                        onChange={(e) =>
+                          setPaymentMethod(e.target.value)
+                        }
+                        className="h-4 w-4 accent-indigo-600"
+                      />
+
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          Cash on Delivery
+                        </p>
+
+                        <p className="text-sm text-gray-500">
+                          Pay when your order arrives.
+                        </p>
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Stripe */}
+                  <label
+                    className={`block cursor-pointer rounded-xl border-2 p-4 ${
+                      paymentMethod === "online"
+                        ? "border-indigo-600 bg-indigo-50"
+                        : "border-gray-200"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="online"
+                        checked={
+                          paymentMethod === "online"
+                        }
+                        onChange={(e) =>
+                          setPaymentMethod(e.target.value)
+                        }
+                        className="h-4 w-4 accent-indigo-600"
+                      />
+
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          Online Payment
+                        </p>
+
+                        <p className="text-sm text-gray-500">
+                          Pay securely using Stripe.
+                        </p>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Security */}
+              <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+                <div className="flex gap-3">
+                  <span className="text-xl">🔒</span>
+
+                  <div>
+                    <p className="font-semibold text-green-800">
+                      Secure Checkout
+                    </p>
+
+                    <p className="text-sm text-green-700">
+                      Your payment and personal information
+                      are protected.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Order Summary */}
+            <div>
+              <div className="sticky top-24 rounded-2xl bg-white p-6 shadow-sm">
+                <h2 className="mb-6 text-xl font-bold text-gray-900">
+                  Order Summary
+                </h2>
+
+                {/* Items */}
+                <div className="mb-6 max-h-72 space-y-4 overflow-y-auto">
+                  {cartItems.map((item) => {
+                    const product = getProduct(item);
+                    const price = getPrice(product);
+
+                    return (
+                      <div
+                        key={
+                          item.product?._id ||
+                          item.product
+                        }
+                        className="flex gap-3"
+                      >
+                        <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                          <img
+                            src={
+                              product.images?.[0]?.url ||
+                              product.images?.[0] ||
+                              "https://via.placeholder.com/100x100?text=No+Image"
+                            }
+                            alt={product.name || "Product"}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-gray-900">
+                            {product.name || "Product"}
+                          </p>
+
+                          <p className="text-xs text-gray-500">
+                            Qty: {item.quantity}
+                          </p>
+
+                          <p className="mt-1 text-sm font-semibold text-gray-800">
+                            ₹
+                            {(
+                              price * item.quantity
+                            ).toLocaleString("en-IN")}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Totals */}
+                <div className="space-y-4 border-t border-gray-200 pt-5">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Subtotal</span>
+
+                    <span className="font-medium text-gray-900">
+                      ₹
+                      {subtotal.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between text-gray-600">
+                    <span>Shipping</span>
+
+                    <span className="font-medium text-gray-900">
+                      {shipping === 0
+                        ? "FREE"
+                        : `₹${shipping}`}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between text-gray-600">
+                    <span>Tax (5%)</span>
+
+                    <span className="font-medium text-gray-900">
+                      ₹
+                      {tax.toLocaleString("en-IN", {
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-bold text-gray-900">
+                        Total
+                      </span>
+
+                      <span className="text-2xl font-bold text-indigo-600">
+                        ₹
+                        {total.toLocaleString("en-IN", {
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Place Order */}
+                <button
+                  onClick={handlePlaceOrder}
+                  disabled={
+                    orderLoading ||
+                    !selectedAddress ||
+                    addresses.length === 0
+                  }
+                  className="mt-6 w-full rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+                >
+                  {orderLoading
+                    ? "Processing..."
+                    : paymentMethod === "online"
+                    ? "Continue to Payment"
+                    : "Place Order"}
+                </button>
+
+                <button
+                  onClick={() => navigate("/cart")}
+                  disabled={orderLoading}
+                  className="mt-3 w-full rounded-xl border border-gray-300 px-6 py-3 font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Back to Cart
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <Footer />
+    </>
+  );
+}
+
+export default Checkout;

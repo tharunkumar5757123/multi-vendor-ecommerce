@@ -12,6 +12,7 @@ const sellerRoutes = require("./routes/sellerRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const addressRoutes = require("./routes/addressRoutes");
+const wishlistRoutes = require("./routes/wishlistRoutes");
 
 const errorMiddleware = require("./middleware/errorMiddleware");
 
@@ -47,6 +48,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/sellers", sellerRoutes);

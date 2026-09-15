@@ -1,4 +1,3 @@
-
 const Product = require("../models/Product");
 const Category = require("../models/Category");
 
@@ -26,6 +25,7 @@ const createProduct = async (req, res) => {
       sku,
     } = req.body;
 
+    // Required fields
     if (
       !name ||
       !description ||
@@ -65,7 +65,9 @@ const createProduct = async (req, res) => {
     // Generate unique slug
     let slug = generateSlug(name);
 
-    const existingSlug = await Product.findOne({ slug });
+    const existingSlug = await Product.findOne({
+      slug,
+    });
 
     if (existingSlug) {
       slug = `${slug}-${Date.now()}`;
@@ -75,6 +77,12 @@ const createProduct = async (req, res) => {
     const images = [];
 
     if (req.files && req.files.length > 0) {
+      if (req.files.length > 5) {
+        return res.status(400).json({
+          message: "A product can have maximum 5 images",
+        });
+      }
+
       for (const file of req.files) {
         console.log("Local file:", file.path);
 
@@ -85,10 +93,18 @@ const createProduct = async (req, res) => {
           publicId: result.publicId,
         });
 
+        // Delete local file after Cloudinary upload
         if (file.path && fs.existsSync(file.path)) {
           fs.unlinkSync(file.path);
         }
       }
+    }
+
+    // Product must have at least one image
+    if (images.length === 0) {
+      return res.status(400).json({
+        message: "Product must have at least one image",
+      });
     }
 
     // Create product
@@ -97,18 +113,26 @@ const createProduct = async (req, res) => {
       slug,
       description: description.trim(),
       price: Number(price),
+
       discountPrice:
         discountPrice !== undefined
           ? Number(discountPrice)
           : 0,
+
       images,
+
       brand: brand ? brand.trim() : "",
+
       category,
+
       seller: req.user._id,
+
       stock: Number(stock),
+
       sku: sku.trim(),
     });
 
+    // Populate category and seller
     await product.populate([
       {
         path: "category",
@@ -127,6 +151,22 @@ const createProduct = async (req, res) => {
     });
   } catch (error) {
     console.error("Create product error:", error);
+
+    // Cleanup local files if upload/process fails
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        if (file.path && fs.existsSync(file.path)) {
+          try {
+            fs.unlinkSync(file.path);
+          } catch (fileError) {
+            console.error(
+              "Local file cleanup error:",
+              fileError.message
+            );
+          }
+        }
+      }
+    }
 
     res.status(500).json({
       message: "Failed to create product",
@@ -330,7 +370,9 @@ const getSellerProducts = async (req, res) => {
 
 const getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id)
+    const product = await Product.findById(
+      req.params.id
+    )
       .populate("category", "name")
       .populate("seller", "name email");
 
@@ -374,7 +416,10 @@ const updateProduct = async (req, res) => {
       });
     }
 
+    // ==================================================
     // Seller can update only own products
+    // ==================================================
+
     if (
       req.user.role === "seller" &&
       product.seller.toString() !==
@@ -395,10 +440,13 @@ const updateProduct = async (req, res) => {
       category,
       stock,
       sku,
-      existingImages,
+      removeImages,
     } = req.body;
 
-    // Check category
+    // ==================================================
+    // Check Category
+    // ==================================================
+
     if (category) {
       const categoryExists =
         await Category.findOne({
@@ -411,10 +459,18 @@ const updateProduct = async (req, res) => {
           message: "Active category not found",
         });
       }
+
+      product.category = category;
     }
 
+    // ==================================================
     // Check SKU
-    if (sku && sku.trim() !== product.sku) {
+    // ==================================================
+
+    if (
+      sku &&
+      sku.trim() !== product.sku
+    ) {
       const existingSku =
         await Product.findOne({
           sku: sku.trim(),
@@ -428,62 +484,103 @@ const updateProduct = async (req, res) => {
           message: "SKU already exists",
         });
       }
+
+      product.sku = sku.trim();
     }
 
-    // Existing images
-    let keptImages = [];
+    // ==================================================
+    // Handle Remove Images
+    // ==================================================
 
-    if (existingImages) {
-      try {
-        keptImages =
-          typeof existingImages === "string"
-            ? JSON.parse(existingImages)
-            : existingImages;
+    let imagesToRemove = removeImages || [];
 
-        if (!Array.isArray(keptImages)) {
-          return res.status(400).json({
-            message:
-              "existingImages must be an array",
-          });
-        }
-      } catch (error) {
-        return res.status(400).json({
-          message:
-            "Invalid existingImages format",
-        });
-      }
-    } else {
-      // Keep all existing images
-      keptImages = product.images || [];
+    // If only one value is received
+    if (!Array.isArray(imagesToRemove)) {
+      imagesToRemove = [imagesToRemove];
     }
 
-    // Old images
+    imagesToRemove = imagesToRemove.filter(
+      Boolean
+    );
+
     const oldImages = product.images || [];
 
-    // Find removed images
+    // Find images that need to be deleted
     const imagesToDelete = oldImages.filter(
       (oldImage) =>
-        !keptImages.some(
-          (keptImage) =>
-            keptImage.publicId ===
-            oldImage.publicId
+        imagesToRemove.includes(
+          oldImage.publicId
         )
     );
 
-    // Delete removed images from Cloudinary
+    // ==================================================
+    // Check Final Image Count Before Delete
+    // ==================================================
+
+    const keptImages = oldImages.filter(
+      (oldImage) =>
+        !imagesToRemove.includes(
+          oldImage.publicId
+        )
+    );
+
+    const newImageCount =
+      req.files && req.files.length
+        ? req.files.length
+        : 0;
+
+    const finalImageCount =
+      keptImages.length + newImageCount;
+
+    if (finalImageCount === 0) {
+      return res.status(400).json({
+        message:
+          "Product must have at least one image",
+      });
+    }
+
+    if (finalImageCount > 5) {
+      return res.status(400).json({
+        message:
+          "A product can have maximum 5 images",
+      });
+    }
+
+    // ==================================================
+    // Delete Removed Images From Cloudinary
+    // ==================================================
+
     for (const image of imagesToDelete) {
       if (image.publicId) {
-        await deleteFromCloudinary(
-          image.publicId
-        );
+        try {
+          await deleteFromCloudinary(
+            image.publicId
+          );
+        } catch (cloudinaryError) {
+          console.error(
+            "Cloudinary image delete error:",
+            cloudinaryError.message
+          );
+        }
       }
     }
 
-    // Upload new images
+    // ==================================================
+    // Upload New Images
+    // ==================================================
+
     const newImages = [];
 
-    if (req.files && req.files.length > 0) {
+    if (
+      req.files &&
+      req.files.length > 0
+    ) {
       for (const file of req.files) {
+        console.log(
+          "New product image:",
+          file.path
+        );
+
         const result =
           await uploadToCloudinary(
             file.path
@@ -494,6 +591,7 @@ const updateProduct = async (req, res) => {
           publicId: result.publicId,
         });
 
+        // Remove local file
         if (
           file.path &&
           fs.existsSync(file.path)
@@ -503,53 +601,53 @@ const updateProduct = async (req, res) => {
       }
     }
 
-    // Check if name changed
+    // ==================================================
+    // Check Name Changed
+    // ==================================================
+
     const nameChanged =
       name !== undefined &&
       name.trim() !== product.name;
 
-    // Update fields
-    product.name =
-      name !== undefined
-        ? name.trim()
-        : product.name;
+    // ==================================================
+    // Update Fields
+    // ==================================================
 
-    product.description =
-      description !== undefined
-        ? description.trim()
-        : product.description;
+    if (name !== undefined) {
+      product.name = name.trim();
+    }
 
-    product.price =
-      price !== undefined
-        ? Number(price)
-        : product.price;
+    if (description !== undefined) {
+      product.description =
+        description.trim();
+    }
 
-    product.discountPrice =
+    if (price !== undefined) {
+      product.price = Number(price);
+    }
+
+    if (
       discountPrice !== undefined
-        ? Number(discountPrice)
-        : product.discountPrice;
+    ) {
+      product.discountPrice =
+        Number(discountPrice);
+    }
 
-    product.brand =
-      brand !== undefined
-        ? brand.trim()
-        : product.brand;
+    if (brand !== undefined) {
+      product.brand = brand.trim();
+    }
 
-    product.category =
-      category ?? product.category;
+    if (stock !== undefined) {
+      product.stock = Number(stock);
+    }
 
-    product.stock =
-      stock !== undefined
-        ? Number(stock)
-        : product.stock;
+    // ==================================================
+    // Update Slug If Name Changed
+    // ==================================================
 
-    product.sku =
-      sku !== undefined
-        ? sku.trim()
-        : product.sku;
-
-    // Update slug if name changed
     if (nameChanged) {
-      let newSlug = generateSlug(name);
+      let newSlug =
+        generateSlug(name);
 
       const existingSlug =
         await Product.findOne({
@@ -566,15 +664,25 @@ const updateProduct = async (req, res) => {
       product.slug = newSlug;
     }
 
-    // Update images
+    // ==================================================
+    // Update Images
+    // ==================================================
+
     product.images = [
       ...keptImages,
       ...newImages,
     ];
 
+    // ==================================================
+    // Save Product
+    // ==================================================
+
     await product.save();
 
+    // ==================================================
     // Populate
+    // ==================================================
+
     await product.populate([
       {
         path: "category",
@@ -588,7 +696,8 @@ const updateProduct = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Product updated successfully",
+      message:
+        "Product updated successfully",
       product,
     });
   } catch (error) {
@@ -597,8 +706,31 @@ const updateProduct = async (req, res) => {
       error
     );
 
+    // Cleanup uploaded local files
+    if (
+      req.files &&
+      req.files.length > 0
+    ) {
+      for (const file of req.files) {
+        if (
+          file.path &&
+          fs.existsSync(file.path)
+        ) {
+          try {
+            fs.unlinkSync(file.path);
+          } catch (fileError) {
+            console.error(
+              "Local file cleanup error:",
+              fileError.message
+            );
+          }
+        }
+      }
+    }
+
     res.status(500).json({
-      message: "Failed to update product",
+      message:
+        "Failed to update product",
       error: error.message,
     });
   }
@@ -616,7 +748,9 @@ const updateProductStatus = async (
     const { id } = req.params;
     const { isActive } = req.body;
 
-    if (typeof isActive !== "boolean") {
+    if (
+      typeof isActive !== "boolean"
+    ) {
       return res.status(400).json({
         message:
           "isActive must be true or false",
@@ -671,11 +805,15 @@ const updateProductStatus = async (
 // Seller / Admin
 // ======================================================
 
-const deleteProduct = async (req, res) => {
+const deleteProduct = async (
+  req,
+  res
+) => {
   try {
-    const product = await Product.findById(
-      req.params.id
-    );
+    const product =
+      await Product.findById(
+        req.params.id
+      );
 
     if (!product) {
       return res.status(404).json({
@@ -695,21 +833,34 @@ const deleteProduct = async (req, res) => {
       });
     }
 
-    // Delete images from Cloudinary
+    // ==================================================
+    // Delete Images From Cloudinary
+    // ==================================================
+
     if (
       product.images &&
       product.images.length > 0
     ) {
       for (const image of product.images) {
         if (image.publicId) {
-          await deleteFromCloudinary(
-            image.publicId
-          );
+          try {
+            await deleteFromCloudinary(
+              image.publicId
+            );
+          } catch (cloudinaryError) {
+            console.error(
+              "Cloudinary delete error:",
+              cloudinaryError.message
+            );
+          }
         }
       }
     }
 
-    // Delete product
+    // ==================================================
+    // Delete Product
+    // ==================================================
+
     await product.deleteOne();
 
     res.status(200).json({
@@ -724,7 +875,8 @@ const deleteProduct = async (req, res) => {
     );
 
     res.status(500).json({
-      message: "Failed to delete product",
+      message:
+        "Failed to delete product",
       error: error.message,
     });
   }

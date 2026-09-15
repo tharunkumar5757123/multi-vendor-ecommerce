@@ -1,5 +1,6 @@
+
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
 
 function Register() {
@@ -45,6 +46,7 @@ function Register() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
 
+        {/* Heading */}
         <h1 className="text-3xl font-bold text-center text-gray-800">
           Create Account
         </h1>
@@ -53,16 +55,19 @@ function Register() {
           Join our marketplace
         </p>
 
+        {/* Error */}
         {error && (
           <div className="mt-5 bg-red-100 text-red-700 p-3 rounded-lg">
             {error}
           </div>
         )}
 
+        {/* Register Form */}
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
 
+          {/* Name */}
           <div>
-            <label className="block mb-2 font-medium">
+            <label className="block mb-2 font-medium text-gray-700">
               Name
             </label>
 
@@ -77,8 +82,9 @@ function Register() {
             />
           </div>
 
+          {/* Email */}
           <div>
-            <label className="block mb-2 font-medium">
+            <label className="block mb-2 font-medium text-gray-700">
               Email
             </label>
 
@@ -93,8 +99,9 @@ function Register() {
             />
           </div>
 
+          {/* Password */}
           <div>
-            <label className="block mb-2 font-medium">
+            <label className="block mb-2 font-medium text-gray-700">
               Password
             </label>
 
@@ -110,15 +117,27 @@ function Register() {
             />
           </div>
 
+          {/* Register Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400"
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 transition"
           >
             {loading ? "Creating account..." : "Register"}
           </button>
-
         </form>
+
+        {/* Login Link */}
+        <div className="mt-6 text-center text-sm text-gray-600">
+          Already have an account?{" "}
+          <Link
+            to="/login"
+            className="font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            Login
+          </Link>
+        </div>
+
       </div>
     </div>
   );

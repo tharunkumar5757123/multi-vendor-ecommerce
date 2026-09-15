@@ -52,6 +52,18 @@ function Navbar() {
               >
                 Cart
               </NavLink>
+              <NavLink
+  to="/profile"
+  className="text-gray-700 hover:text-blue-600"
+>
+  Profile
+</NavLink>
+              <NavLink
+  to="/wishlist"
+  className="text-gray-700 hover:text-blue-600"
+>
+  Wishlist
+</NavLink>
 
               <NavLink
                 to="/orders"
