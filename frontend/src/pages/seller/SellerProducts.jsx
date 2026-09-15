@@ -3,6 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import api from "../../services/api";
+import {
+  showConfirmToast,
+  showToast,
+} from "../../utils/showToast";
 
 function SellerProducts() {
   const navigate = useNavigate();
@@ -25,7 +29,9 @@ function SellerProducts() {
     } catch (error) {
       console.error("FETCH SELLER PRODUCTS ERROR:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Products unavailable",
         error.response?.data?.message ||
           "Failed to load your products"
       );
@@ -64,9 +70,11 @@ function SellerProducts() {
   };
 
   const handleDelete = async (productId) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this product?"
-    );
+    const confirmed = await showConfirmToast({
+      title: "Delete product?",
+      message: "This product will be permanently deleted.",
+      confirmText: "Delete",
+    });
 
     if (!confirmed) return;
 
@@ -81,11 +89,17 @@ function SellerProducts() {
         )
       );
 
-      alert("Product deleted successfully");
+      showToast(
+        "success",
+        "Product deleted",
+        "Product deleted successfully."
+      );
     } catch (error) {
       console.error("DELETE PRODUCT ERROR:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Delete failed",
         error.response?.data?.message ||
           "Failed to delete product"
       );

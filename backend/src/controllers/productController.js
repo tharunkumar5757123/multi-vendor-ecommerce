@@ -7,6 +7,28 @@ const generateSlug = require("../utils/generateSlug");
 
 const fs = require("fs");
 
+const normalizeProductImage = (image) => {
+  if (!image) {
+    return null;
+  }
+
+  if (typeof image === "string") {
+    return {
+      url: image,
+      publicId: "",
+    };
+  }
+
+  if (!image.url) {
+    return null;
+  }
+
+  return {
+    url: image.url,
+    publicId: image.publicId || "",
+  };
+};
+
 // ======================================================
 // Create Product
 // Seller / Admin
@@ -503,7 +525,9 @@ const updateProduct = async (req, res) => {
       Boolean
     );
 
-    const oldImages = product.images || [];
+    const oldImages = (product.images || [])
+      .map(normalizeProductImage)
+      .filter(Boolean);
 
     // Find images that need to be deleted
     const imagesToDelete = oldImages.filter(
@@ -645,9 +669,12 @@ const updateProduct = async (req, res) => {
     // Update Slug If Name Changed
     // ==================================================
 
-    if (nameChanged) {
+    if (nameChanged || !product.slug) {
+      const slugSourceName =
+        name !== undefined ? name : product.name;
+
       let newSlug =
-        generateSlug(name);
+        generateSlug(slugSourceName);
 
       const existingSlug =
         await Product.findOne({

@@ -7,6 +7,10 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Loader from "../components/Loader";
 import api from "../services/api";
+import {
+  showConfirmToast,
+  showToast,
+} from "../utils/showToast";
 
 function Cart() {
   const navigate = useNavigate();
@@ -146,7 +150,9 @@ function Cart() {
     const product = item?.product;
 
     if (product && quantity > product.stock) {
-      alert(
+      showToast(
+        "warning",
+        "Stock limit reached",
         `Only ${product.stock} item${
           product.stock === 1 ? "" : "s"
         } available in stock.`
@@ -171,7 +177,9 @@ function Cart() {
         error
       );
 
-      alert(
+      showToast(
+        "error",
+        "Quantity update failed",
         error.response?.data?.message ||
           "Failed to update quantity."
       );
@@ -199,7 +207,9 @@ function Cart() {
     } catch (error) {
       console.error("Remove item error:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Remove failed",
         error.response?.data?.message ||
           "Failed to remove product."
       );
@@ -212,9 +222,11 @@ function Cart() {
   // Clear Cart
   // ---------------------------------------
   const handleClearCart = async () => {
-    const confirmed = window.confirm(
-      "Are you sure you want to clear your cart?"
-    );
+    const confirmed = await showConfirmToast({
+      title: "Clear cart?",
+      message: "This will remove all products from your cart.",
+      confirmText: "Clear Cart",
+    });
 
     if (!confirmed) {
       return;
@@ -226,10 +238,18 @@ function Cart() {
       const response = await api.delete("/cart");
 
       setCart(response.data.cart || response.data);
+
+      showToast(
+        "success",
+        "Cart cleared",
+        "All products were removed from your cart."
+      );
     } catch (error) {
       console.error("Clear cart error:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Clear cart failed",
         error.response?.data?.message ||
           "Failed to clear cart."
       );

@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 
 import Navbar from "../../components/Navbar";
 import api from "../../services/api";
+import {
+  showConfirmToast,
+  showToast,
+} from "../../utils/showToast";
 
 function AdminCategories() {
   const [categories, setCategories] = useState([]);
@@ -74,7 +78,11 @@ function AdminCategories() {
     e.preventDefault();
 
     if (!formData.name.trim()) {
-      alert("Category name is required");
+      showToast(
+        "warning",
+        "Category name required",
+        "Category name is required."
+      );
       return;
     }
 
@@ -173,7 +181,9 @@ function AdminCategories() {
         error
       );
 
-      alert(
+      showToast(
+        "error",
+        "Status update failed",
         error.response?.data?.message ||
           "Failed to update category status"
       );
@@ -186,9 +196,11 @@ function AdminCategories() {
     categoryId,
     categoryName
   ) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${categoryName}"?`
-    );
+    const confirmed = await showConfirmToast({
+      title: "Delete category?",
+      message: `"${categoryName}" will be permanently deleted.`,
+      confirmText: "Delete",
+    });
 
     if (!confirmed) {
       return;
@@ -207,13 +219,21 @@ function AdminCategories() {
             category._id !== categoryId
         )
       );
+
+      showToast(
+        "success",
+        "Category deleted",
+        "Category deleted successfully."
+      );
     } catch (error) {
       console.error(
         "Category delete error:",
         error
       );
 
-      alert(
+      showToast(
+        "error",
+        "Delete failed",
         error.response?.data?.message ||
           "Failed to delete category"
       );

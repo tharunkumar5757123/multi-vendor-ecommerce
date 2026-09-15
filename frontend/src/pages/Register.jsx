@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import toast from "react-hot-toast";
 import api from "../services/api";
 
 function Register() {
@@ -29,7 +30,27 @@ function Register() {
     setLoading(true);
 
     try {
-      await api.post("/auth/register", formData);
+      await toast.promise(
+        api.post("/auth/register", formData),
+        {
+          loading: "Creating account...",
+          success: "Account created",
+          error: (error) =>
+            error.response?.data?.message ||
+            "Registration failed",
+        },
+        {
+          loading: {
+            icon: "⏳",
+          },
+          success: {
+            icon: "✅",
+          },
+          error: {
+            icon: "❌",
+          },
+        }
+      );
 
       navigate("/login");
     } catch (error) {

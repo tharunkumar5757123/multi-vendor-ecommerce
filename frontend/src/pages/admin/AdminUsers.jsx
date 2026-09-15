@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import Navbar from "../../components/Navbar";
 import api from "../../services/api";
+import { showToast } from "../../utils/showToast";
 
 function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -62,7 +63,9 @@ function AdminUsers() {
     } catch (error) {
       console.error("Status update error:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Status update failed",
         error.response?.data?.message ||
           "Failed to update user status"
       );

@@ -8,6 +8,10 @@ import AddressForm from "../components/AddressForm";
 
 import api from "../services/api";
 import { loginSuccess } from "../redux/slices/authSlice";
+import {
+  showConfirmToast,
+  showToast,
+} from "../utils/showToast";
 
 function Profile() {
   const dispatch = useDispatch();
@@ -276,9 +280,11 @@ function Profile() {
 
   // Delete address
   const handleDeleteAddress = async (id) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this address?"
-    );
+    const confirmed = await showConfirmToast({
+      title: "Delete address?",
+      message: "This address will be removed from your profile.",
+      confirmText: "Delete",
+    });
 
     if (!confirmed) return;
 
@@ -295,8 +301,20 @@ function Profile() {
       );
 
       setSuccess("Address deleted successfully.");
+      showToast(
+        "success",
+        "Address deleted",
+        "Address deleted successfully."
+      );
     } catch (error) {
       console.error("Delete address error:", error);
+
+      showToast(
+        "error",
+        "Delete failed",
+        error.response?.data?.message ||
+          "Failed to delete address"
+      );
 
       setError(
         error.response?.data?.message ||

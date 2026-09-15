@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import api from "../../services/api";
+import { showToast } from "../../utils/showToast";
 
 function SellerAddProduct() {
   const navigate = useNavigate();
@@ -44,7 +45,9 @@ function SellerAddProduct() {
           error
         );
 
-        alert(
+        showToast(
+          "error",
+          "Categories unavailable",
           error.response?.data?.message ||
             "Failed to load categories"
         );
@@ -86,7 +89,11 @@ function SellerAddProduct() {
     }
 
     if (selectedFiles.length > 5) {
-      alert("You can upload maximum 5 images.");
+      showToast(
+        "warning",
+        "Image limit reached",
+        "You can upload maximum 5 images."
+      );
 
       event.target.value = "";
       return;
@@ -97,7 +104,11 @@ function SellerAddProduct() {
     );
 
     if (invalidFile) {
-      alert("Only image files are allowed.");
+      showToast(
+        "warning",
+        "Invalid file type",
+        "Only image files are allowed."
+      );
 
       event.target.value = "";
       return;
@@ -108,7 +119,9 @@ function SellerAddProduct() {
     );
 
     if (largeFile) {
-      alert(
+      showToast(
+        "warning",
+        "File too large",
         "Each image must be smaller than 5MB."
       );
 
@@ -268,7 +281,9 @@ function SellerAddProduct() {
         }
       );
 
-      alert(
+      showToast(
+        "success",
+        "Product created",
         response.data?.message ||
           "Product created successfully"
       );
@@ -280,8 +295,11 @@ function SellerAddProduct() {
         error
       );
 
-      alert(
+      showToast(
+        "error",
+        "Product creation failed",
         error.response?.data?.message ||
+          error.response?.data?.error ||
           "Failed to create product"
       );
     } finally {

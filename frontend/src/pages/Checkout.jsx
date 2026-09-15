@@ -8,6 +8,7 @@ import Footer from "../components/Footer";
 import Loader from "../components/Loader";
 import AddressForm from "../components/AddressForm";
 import api from "../services/api";
+import { showToast } from "../utils/showToast";
 
 function Checkout() {
   const navigate = useNavigate();
@@ -141,13 +142,20 @@ function Checkout() {
 
       setSelectedAddress(newAddress._id);
       setShowAddressForm(false);
+      showToast(
+        "success",
+        "Address saved",
+        "Your new delivery address is selected for this order."
+      );
     } catch (error) {
       console.error(
         "Add address error:",
         error
       );
 
-      alert(
+      showToast(
+        "error",
+        "Address not saved",
         error.response?.data?.message ||
           "Failed to add address."
       );
@@ -262,28 +270,38 @@ function Checkout() {
     }
 
     if (!selectedAddress) {
-      alert(
+      showToast(
+        "warning",
+        "Choose an address",
         "Please select a delivery address."
       );
       return;
     }
 
     if (addresses.length === 0) {
-      alert(
+      showToast(
+        "warning",
+        "Add a delivery address",
         "Please add a delivery address."
       );
       return;
     }
 
     if (cartItems.length === 0) {
-      alert("Your cart is empty.");
+      showToast(
+        "info",
+        "Cart is empty",
+        "Add a product before placing an order."
+      );
       navigate("/products");
       return;
     }
 
     if (unavailableItem) {
-      alert(
-        "One or more products in your cart are unavailable or have insufficient stock. Please update your cart."
+      showToast(
+        "error",
+        "Update your cart",
+        "One or more items are unavailable or do not have enough stock."
       );
       navigate("/cart");
       return;
@@ -322,6 +340,11 @@ function Checkout() {
       // COD
       // -----------------------------------
       if (paymentMethod === "cod") {
+        showToast(
+          "success",
+          "Order placed",
+          "Your cash on delivery order is ready to track."
+        );
         navigate(`/orders/${orderId}`);
         return;
       }
@@ -347,6 +370,12 @@ function Checkout() {
         );
       }
 
+      showToast(
+        "info",
+        "Opening secure payment",
+        "You are being redirected to Stripe to finish payment."
+      );
+
       // Redirect to Stripe
       window.location.href =
         checkoutUrl;
@@ -356,7 +385,9 @@ function Checkout() {
         error
       );
 
-      alert(
+      showToast(
+        "error",
+        "Order could not be placed",
         error.response?.data?.message ||
           error.message ||
           "Failed to place order."

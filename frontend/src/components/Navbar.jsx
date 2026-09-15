@@ -1,23 +1,45 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { logout } from "../redux/slices/authSlice";
+import { showToast } from "../utils/showToast";
 
 function Navbar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("theme") || "light";
+  });
 
   const { user, isAuthenticated } = useSelector(
     (state) => state.auth
   );
 
+  useEffect(() => {
+    const isDark = theme === "dark";
+
+    document.documentElement.classList.toggle("dark", isDark);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((currentTheme) =>
+      currentTheme === "dark" ? "light" : "dark"
+    );
+  };
+
   const handleLogout = () => {
     dispatch(logout());
     setMobileMenuOpen(false);
+    showToast(
+      "success",
+      "Logged out",
+      ""
+    );
     navigate("/");
   };
 
@@ -31,6 +53,18 @@ function Navbar() {
         ? "text-indigo-600"
         : "text-gray-700 hover:text-indigo-600"
     }`;
+
+  const ThemeToggle = ({ className = "" }) => (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      className={`rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-md ${className}`}
+      aria-label="Toggle theme"
+      title="Toggle theme"
+    >
+      {theme === "dark" ? "Light" : "Dark"}
+    </button>
+  );
 
   return (
     <nav className="sticky top-0 z-50 border-b border-gray-100 bg-white shadow-sm">
@@ -92,6 +126,8 @@ function Navbar() {
                 >
                   Register
                 </NavLink>
+
+                <ThemeToggle />
               </>
             )}
 
@@ -214,6 +250,7 @@ function Navbar() {
             {/* ================= USER INFO ================= */}
             {isAuthenticated && user && (
               <div className="flex items-center gap-3 border-l border-gray-200 pl-5">
+                <ThemeToggle />
 
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 font-bold text-indigo-700">
                   {user.name?.charAt(0)?.toUpperCase()}
@@ -315,6 +352,8 @@ function Navbar() {
                   </NavLink>
 
                   <div className="mt-2 flex gap-3 border-t border-gray-100 pt-4">
+                    <ThemeToggle className="flex-1" />
+
                     <NavLink
                       to="/login"
                       onClick={closeMobileMenu}
@@ -485,6 +524,14 @@ function Navbar() {
                       </p>
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="mb-3 w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 font-semibold text-gray-700 transition hover:bg-gray-50"
+                  >
+                    {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                  </button>
 
                   <button
                     onClick={handleLogout}

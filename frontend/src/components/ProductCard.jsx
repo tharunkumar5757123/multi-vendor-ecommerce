@@ -7,6 +7,7 @@ import {
   removeWishlistProduct,
 } from "../redux/slices/wishlistSlice";
 import api from "../services/api";
+import { showToast } from "../utils/showToast";
 
 function ProductCard({ product }) {
   const navigate = useNavigate();
@@ -57,7 +58,11 @@ function ProductCard({ product }) {
     }
 
     if (!isCustomer) {
-      alert("Only customers can add products to the cart.");
+      showToast(
+        "warning",
+        "Customer account required",
+        "Only customers can add products to the cart."
+      );
       return;
     }
 
@@ -69,11 +74,17 @@ function ProductCard({ product }) {
         quantity: 1,
       });
 
-      alert("Product added to cart successfully.");
+      showToast(
+        "success",
+        "Added to cart",
+        "Product added to cart successfully."
+      );
     } catch (error) {
       console.error("Add to cart error:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Cart update failed",
         error.response?.data?.message ||
           "Failed to add product to cart."
       );
@@ -90,7 +101,11 @@ function ProductCard({ product }) {
     }
 
     if (!isCustomer) {
-      alert("Only customers can use the wishlist.");
+      showToast(
+        "warning",
+        "Customer account required",
+        "Only customers can use the wishlist."
+      );
       return;
     }
 
@@ -116,7 +131,9 @@ function ProductCard({ product }) {
     } catch (error) {
       console.error("Wishlist error:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Wishlist update failed",
         error.response?.data?.message ||
           "Failed to update wishlist."
       );

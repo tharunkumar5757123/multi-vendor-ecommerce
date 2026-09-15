@@ -1,5 +1,6 @@
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
 // Public / Common
 import Login from "./pages/Login";
@@ -40,6 +41,10 @@ import SellerOrders from "./pages/seller/SellerOrders";
 function App() {
   return (
     <BrowserRouter>
+      <Toaster
+        position="top-center"
+        reverseOrder={false}
+      />
 
       {/* Loads wishlist data when customer is logged in */}
       <WishlistLoader />

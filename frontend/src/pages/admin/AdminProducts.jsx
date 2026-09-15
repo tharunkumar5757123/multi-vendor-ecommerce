@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import api from "../../services/api";
+import {
+  showConfirmToast,
+  showToast,
+} from "../../utils/showToast";
 
 function AdminProducts() {
   const navigate = useNavigate();
@@ -85,7 +89,9 @@ function AdminProducts() {
     } catch (error) {
       console.error("Status update error:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Status update failed",
         error.response?.data?.message ||
           "Failed to update product status"
       );
@@ -99,9 +105,11 @@ function AdminProducts() {
     productId,
     productName
   ) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${productName}"?`
-    );
+    const confirmed = await showConfirmToast({
+      title: "Delete product?",
+      message: `"${productName}" will be permanently deleted.`,
+      confirmText: "Delete",
+    });
 
     if (!confirmed) {
       return;
@@ -117,10 +125,18 @@ function AdminProducts() {
           (product) => product._id !== productId
         )
       );
+
+      showToast(
+        "success",
+        "Product deleted",
+        "Product deleted successfully."
+      );
     } catch (error) {
       console.error("Delete product error:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Delete failed",
         error.response?.data?.message ||
           "Failed to delete product"
       );

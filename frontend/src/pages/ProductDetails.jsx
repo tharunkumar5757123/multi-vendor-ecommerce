@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Loader from "../components/Loader";
 import api from "../services/api";
+import { showToast } from "../utils/showToast";
 
 import {
   addWishlistProduct,
@@ -99,11 +100,17 @@ function ProductDetails() {
         quantity,
       });
 
-      alert("Product added to cart");
+      showToast(
+        "success",
+        "Added to cart",
+        "Product added to cart."
+      );
     } catch (error) {
       console.error("Add to cart error:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Cart update failed",
         error.response?.data?.message ||
           "Failed to add product to cart"
       );
@@ -137,7 +144,9 @@ function ProductDetails() {
     } catch (error) {
       console.error("Buy now error:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Unable to continue",
         error.response?.data?.message ||
           "Unable to continue"
       );
@@ -176,7 +185,9 @@ function ProductDetails() {
     } catch (error) {
       console.error("Wishlist error:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Wishlist update failed",
         error.response?.data?.message ||
           "Failed to update wishlist"
       );
@@ -218,7 +229,11 @@ function ProductDetails() {
     }
 
     if (!reviewForm.comment.trim()) {
-      alert("Please enter a review");
+      showToast(
+        "warning",
+        "Review required",
+        "Please enter a review."
+      );
       return;
     }
 
@@ -230,7 +245,11 @@ function ProductDetails() {
         comment: reviewForm.comment,
       });
 
-      alert("Review submitted successfully");
+      showToast(
+        "success",
+        "Review submitted",
+        "Review submitted successfully."
+      );
 
       setReviewForm({
         rating: 5,
@@ -242,7 +261,9 @@ function ProductDetails() {
     } catch (error) {
       console.error("Review error:", error);
 
-      alert(
+      showToast(
+        "error",
+        "Review failed",
         error.response?.data?.message ||
           "Failed to submit review"
       );

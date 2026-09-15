@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Loader from "../components/Loader";
 import api from "../services/api";
+import { showToast } from "../utils/showToast";
 
 function OrderDetails() {
   const { id } = useParams();
@@ -26,10 +27,12 @@ function OrderDetails() {
     } catch (error) {
       console.error("Order details error:", error);
 
-      setError(
+      const message =
         error.response?.data?.message ||
-          "Failed to load order details"
-      );
+        "We could not load this order right now.";
+
+      setError(message);
+      showToast("error", "Order details unavailable", message);
     } finally {
       setLoading(false);
     }
@@ -67,22 +70,22 @@ function OrderDetails() {
   const getStatusClasses = (status) => {
     switch (status) {
       case "delivered":
-        return "bg-green-100 text-green-700";
+        return "border-green-200 bg-green-50 text-green-700";
 
       case "shipped":
-        return "bg-blue-100 text-blue-700";
+        return "border-blue-200 bg-blue-50 text-blue-700";
 
       case "processing":
-        return "bg-purple-100 text-purple-700";
+        return "border-purple-200 bg-purple-50 text-purple-700";
 
       case "confirmed":
-        return "bg-indigo-100 text-indigo-700";
+        return "border-indigo-200 bg-indigo-50 text-indigo-700";
 
       case "cancelled":
-        return "bg-red-100 text-red-700";
+        return "border-red-200 bg-red-50 text-red-700";
 
       default:
-        return "bg-yellow-100 text-yellow-700";
+        return "border-yellow-200 bg-yellow-50 text-yellow-700";
     }
   };
 
@@ -90,13 +93,13 @@ function OrderDetails() {
   const getPaymentClasses = (status) => {
     switch (status) {
       case "paid":
-        return "bg-green-100 text-green-700";
+        return "border-green-200 bg-green-50 text-green-700";
 
       case "failed":
-        return "bg-red-100 text-red-700";
+        return "border-red-200 bg-red-50 text-red-700";
 
       default:
-        return "bg-yellow-100 text-yellow-700";
+        return "border-yellow-200 bg-yellow-50 text-yellow-700";
     }
   };
 
@@ -126,6 +129,26 @@ function OrderDetails() {
       order?._id?.slice(-8).toUpperCase() ||
       "N/A"
     );
+  };
+
+  const copyOrderId = async () => {
+    const value = order?._id || getOrderNumber();
+
+    try {
+      await navigator.clipboard.writeText(value);
+      showToast(
+        "success",
+        "Order ID copied",
+        "You can paste it into support chat or order lookup."
+      );
+    } catch (error) {
+      console.error("Copy order ID error:", error);
+      showToast(
+        "error",
+        "Copy failed",
+        "Please select and copy the order ID manually."
+      );
+    }
   };
 
   // Get address
@@ -203,8 +226,8 @@ function OrderDetails() {
       <>
         <Navbar />
 
-        <main className="flex min-h-[60vh] items-center justify-center bg-gray-50 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-sm">
+        <main className="flex min-h-[60vh] items-center justify-center bg-gradient-to-br from-gray-50 via-white to-indigo-50 px-4">
+          <div className="w-full max-w-md animate-fade-up rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-xl shadow-gray-900/5">
             <div className="mb-4 text-5xl">📦</div>
 
             <h2 className="mb-3 text-2xl font-bold text-gray-900">
@@ -216,12 +239,23 @@ function OrderDetails() {
                 "We couldn't find this order."}
             </p>
 
-            <button
-              onClick={() => navigate("/orders")}
-              className="rounded-lg bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-700"
-            >
-              Back to Orders
-            </button>
+            <div className="flex flex-col justify-center gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={fetchOrder}
+                className="rounded-lg border border-gray-300 px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-50"
+              >
+                Try Again
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate("/orders")}
+                className="rounded-lg bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-indigo-700"
+              >
+                Back to Orders
+              </button>
+            </div>
           </div>
         </main>
 
@@ -234,13 +268,18 @@ function OrderDetails() {
     <>
       <Navbar />
 
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-indigo-50/60">
         {/* Header */}
-        <section className="bg-gray-900 px-4 py-10 text-white">
-          <div className="mx-auto max-w-7xl">
+        <section className="relative overflow-hidden bg-gray-950 px-4 py-10 text-white">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-300 to-transparent" />
+          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl" />
+          <div className="absolute -left-24 bottom-0 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl" />
+
+          <div className="relative mx-auto max-w-7xl animate-fade-up">
             <button
               onClick={() => navigate("/orders")}
-              className="mb-5 text-sm text-gray-300 hover:text-white"
+              type="button"
+              className="mb-5 text-sm font-medium text-gray-300 transition hover:text-white"
             >
               ← Back to Orders
             </button>
@@ -262,7 +301,7 @@ function OrderDetails() {
               </div>
 
               <span
-                className={`w-fit rounded-full px-4 py-2 text-sm font-bold capitalize ${getStatusClasses(
+                className={`w-fit rounded-full border px-4 py-2 text-sm font-bold capitalize shadow-sm ${getStatusClasses(
                   order.orderStatus
                 )}`}
               >
@@ -275,7 +314,7 @@ function OrderDetails() {
         <section className="mx-auto max-w-7xl px-4 py-8">
           {/* Cancelled */}
           {order.orderStatus === "cancelled" && (
-            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-5">
+            <div className="mb-6 animate-fade-up rounded-xl border border-red-200 bg-red-50 p-5 shadow-sm">
               <div className="flex gap-3">
                 <span className="text-xl">⚠️</span>
 
@@ -298,14 +337,24 @@ function OrderDetails() {
             <div className="space-y-8 lg:col-span-2">
               {/* Order Status */}
               {order.orderStatus !== "cancelled" && (
-                <div className="rounded-2xl bg-white p-6 shadow-sm">
+                <div className="animate-fade-up rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                   <h2 className="mb-8 text-xl font-bold text-gray-900">
                     Order Status
                   </h2>
 
                   <div className="relative">
                     {/* Desktop line */}
-                    <div className="absolute left-0 right-0 top-5 hidden h-1 bg-gray-200 md:block" />
+                    <div className="absolute left-0 right-0 top-5 hidden h-1 overflow-hidden rounded-full bg-gray-200 md:block">
+                      <div
+                        className="h-full rounded-full bg-indigo-600 transition-all duration-700"
+                        style={{
+                          width: `${Math.max(
+                            currentStatusIndex,
+                            0
+                          ) * 25}%`,
+                        }}
+                      />
+                    </div>
 
                     <div className="grid gap-6 md:grid-cols-5">
                       {statusSteps.map(
@@ -319,7 +368,7 @@ function OrderDetails() {
                               className="relative flex gap-4 md:block md:text-center"
                             >
                               <div
-                                className={`relative z-10 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold md:mx-auto ${
+                                className={`relative z-10 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-sm transition duration-300 md:mx-auto ${
                                   completed
                                     ? "bg-indigo-600 text-white"
                                     : "bg-gray-200 text-gray-500"
@@ -355,7 +404,7 @@ function OrderDetails() {
               )}
 
               {/* Products */}
-              <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <div className="animate-fade-up rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                 <h2 className="mb-6 text-xl font-bold text-gray-900">
                   Ordered Items
                 </h2>
@@ -380,7 +429,7 @@ function OrderDetails() {
                           product._id ||
                           index
                         }
-                        className="flex flex-col gap-4 border-b border-gray-200 pb-5 last:border-b-0 last:pb-0 sm:flex-row"
+                        className="flex flex-col gap-4 border-b border-gray-200 pb-5 transition hover:-translate-y-0.5 last:border-b-0 last:pb-0 sm:flex-row"
                       >
                         {/* Image */}
                         <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100">
@@ -423,7 +472,7 @@ function OrderDetails() {
 
                           <div className="mt-3 flex flex-wrap items-center gap-3">
                             <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${getStatusClasses(
+                              className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${getStatusClasses(
                                 item.status ||
                                   order.orderStatus
                               )}`}
@@ -460,7 +509,7 @@ function OrderDetails() {
               </div>
 
               {/* Shipping Address */}
-              <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <div className="animate-fade-up rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                 <h2 className="mb-5 text-xl font-bold text-gray-900">
                   Delivery Address
                 </h2>
@@ -493,7 +542,7 @@ function OrderDetails() {
               </div>
 
               {/* Order Information */}
-              <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <div className="animate-fade-up rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                 <h2 className="mb-5 text-xl font-bold text-gray-900">
                   Order Information
                 </h2>
@@ -504,9 +553,19 @@ function OrderDetails() {
                       Order ID
                     </p>
 
-                    <p className="mt-1 break-all font-semibold text-gray-900">
-                      {order._id}
-                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="min-w-0 break-all font-semibold text-gray-900">
+                        {order._id}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={copyOrderId}
+                        className="shrink-0 rounded-lg border border-gray-300 px-3 py-1 text-xs font-bold text-gray-700 transition hover:bg-gray-50"
+                      >
+                        Copy
+                      </button>
+                    </div>
                   </div>
 
                   <div>
@@ -537,7 +596,7 @@ function OrderDetails() {
                     </p>
 
                     <span
-                      className={`mt-1 inline-block rounded-full px-3 py-1 text-xs font-semibold capitalize ${getPaymentClasses(
+                      className={`mt-1 inline-block rounded-full border px-3 py-1 text-xs font-semibold capitalize ${getPaymentClasses(
                         order.paymentStatus
                       )}`}
                     >
@@ -577,7 +636,7 @@ function OrderDetails() {
 
             {/* Summary */}
             <div>
-              <div className="sticky top-24 rounded-2xl bg-white p-6 shadow-sm">
+              <div className="sticky top-24 animate-fade-up rounded-2xl border border-gray-100 bg-white p-6 shadow-lg shadow-gray-900/5">
                 <h2 className="mb-6 text-xl font-bold text-gray-900">
                   Order Summary
                 </h2>
@@ -673,7 +732,7 @@ function OrderDetails() {
                     </span>
 
                     <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${getPaymentClasses(
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${getPaymentClasses(
                         order.paymentStatus
                       )}`}
                     >
@@ -685,14 +744,14 @@ function OrderDetails() {
 
                 <button
                   onClick={() => navigate("/orders")}
-                  className="mt-6 w-full rounded-xl border border-gray-300 px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-50"
+                  className="mt-6 w-full rounded-xl border border-gray-300 px-6 py-3 font-semibold text-gray-700 transition hover:-translate-y-0.5 hover:bg-gray-50"
                 >
                   Back to Orders
                 </button>
 
                 <button
                   onClick={() => navigate("/products")}
-                  className="mt-3 w-full rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-700"
+                  className="mt-3 w-full rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:-translate-y-0.5 hover:bg-indigo-700"
                 >
                   Continue Shopping
                 </button>
@@ -701,7 +760,6 @@ function OrderDetails() {
           </div>
         </section>
       </main>
-
       <Footer />
     </>
   );

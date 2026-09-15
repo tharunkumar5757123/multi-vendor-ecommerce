@@ -45,12 +45,12 @@ function PaymentSuccess() {
       <>
         <Navbar />
 
-        <main className="flex min-h-[70vh] items-center justify-center bg-gray-50 px-6">
+        <main className="flex min-h-[70vh] items-center justify-center bg-gradient-to-br from-gray-50 via-white to-green-50 px-6">
           <div className="text-center">
             <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-indigo-600"></div>
 
             <p className="mt-4 text-sm font-medium text-gray-600">
-              Confirming your payment...
+              Finalizing your secure payment...
             </p>
           </div>
         </main>
@@ -64,13 +64,13 @@ function PaymentSuccess() {
     <>
       <Navbar />
 
-      <main className="min-h-screen bg-gray-50 px-6 py-12">
+      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-green-50 px-6 py-12">
         <div className="flex min-h-[70vh] items-center justify-center">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-8 text-center shadow-sm sm:p-10">
+          <div className="w-full max-w-lg animate-fade-up rounded-2xl border border-green-100 bg-white p-8 text-center shadow-xl shadow-green-900/5 sm:p-10">
 
             {/* Success Icon */}
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
-              <span className="text-4xl font-bold text-green-600">
+            <div className="mx-auto mb-6 flex h-20 w-20 animate-pop-in items-center justify-center rounded-full bg-green-100 ring-8 ring-green-50">
+              <span className="text-3xl font-black text-green-600">
                 ✓
               </span>
             </div>
@@ -82,13 +82,12 @@ function PaymentSuccess() {
 
             {/* Description */}
             <p className="mt-3 leading-6 text-gray-500">
-              Your payment was completed successfully.
-              Your order is now being processed.
+              Your payment went through. We are preparing your order and keeping the status updated in My Orders.
             </p>
 
             {/* Session Information */}
             {sessionId && (
-              <div className="mt-6 rounded-xl bg-gray-50 p-4 text-left">
+              <div className="mt-6 rounded-xl border border-gray-100 bg-gray-50 p-4 text-left">
                 <p className="text-sm font-medium text-gray-500">
                   Payment Session
                 </p>
@@ -100,14 +99,13 @@ function PaymentSuccess() {
             )}
 
             {/* Important Note */}
-            <div className="mt-6 rounded-xl bg-green-50 p-4 text-left">
+            <div className="mt-6 rounded-xl border border-green-200 bg-green-50 p-4 text-left">
               <p className="text-sm font-semibold text-green-800">
                 Order processing
               </p>
 
               <p className="mt-1 text-sm leading-5 text-green-700">
-                Your payment status will be updated by the payment
-                system. You can check your order details from My Orders.
+                If the order still shows pending for a moment, the payment webhook is still syncing. Refresh My Orders shortly.
               </p>
             </div>
 
@@ -116,14 +114,14 @@ function PaymentSuccess() {
 
               <button
                 onClick={() => navigate("/orders")}
-                className="w-full rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-700"
+                className="w-full rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:-translate-y-0.5 hover:bg-indigo-700"
               >
                 View My Orders
               </button>
 
               <button
                 onClick={() => navigate("/products")}
-                className="w-full rounded-xl border border-gray-300 px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-50"
+                className="w-full rounded-xl border border-gray-300 px-6 py-3 font-semibold text-gray-700 transition hover:-translate-y-0.5 hover:bg-gray-50"
               >
                 Continue Shopping
               </button>

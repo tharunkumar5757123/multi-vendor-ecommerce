@@ -8,6 +8,10 @@ import Footer from "../components/Footer";
 import Loader from "../components/Loader";
 import ProductCard from "../components/ProductCard";
 import api from "../services/api";
+import {
+  showConfirmToast,
+  showToast,
+} from "../utils/showToast";
 
 import {
   setWishlist,
@@ -58,9 +62,12 @@ function Wishlist() {
   const handleClearWishlist = async () => {
     if (products.length === 0) return;
 
-    const confirmed = window.confirm(
-      "Are you sure you want to remove all products from your wishlist?"
-    );
+    const confirmed = await showConfirmToast({
+      title: "Clear wishlist?",
+      message:
+        "This will remove all products from your wishlist.",
+      confirmText: "Clear Wishlist",
+    });
 
     if (!confirmed) return;
 
@@ -71,8 +78,21 @@ function Wishlist() {
       await api.delete("/wishlist");
 
       dispatch(clearWishlist());
+
+      showToast(
+        "success",
+        "Wishlist cleared",
+        "All products were removed from your wishlist."
+      );
     } catch (error) {
       console.error("Clear wishlist error:", error);
+
+      showToast(
+        "error",
+        "Clear wishlist failed",
+        error.response?.data?.message ||
+          "Failed to clear wishlist"
+      );
 
       setError(
         error.response?.data?.message ||

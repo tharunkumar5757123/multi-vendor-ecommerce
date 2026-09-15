@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
+import toast from "react-hot-toast";
 
 import { loginSuccess } from "../redux/slices/authSlice";
 import api from "../services/api";
@@ -32,7 +33,28 @@ function Login() {
     setLoading(true);
 
     try {
-      const response = await api.post("/auth/login", formData);
+      const response = await toast.promise(
+        api.post("/auth/login", formData),
+        {
+          loading: "Logging in...",
+          success: "Logged in",
+          error: (error) =>
+            error.response?.data?.message ||
+            error.message ||
+            "Login failed",
+        },
+        {
+          loading: {
+            icon: "⏳",
+          },
+          success: {
+            icon: "✅",
+          },
+          error: {
+            icon: "❌",
+          },
+        }
+      );
 
       console.log("LOGIN SUCCESS:", response.data);
 

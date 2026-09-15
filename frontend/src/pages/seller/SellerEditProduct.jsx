@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import api from "../../services/api";
+import { showToast } from "../../utils/showToast";
 
 function SellerEditProduct() {
   const navigate = useNavigate();
@@ -74,7 +75,9 @@ function SellerEditProduct() {
           error
         );
 
-        alert(
+        showToast(
+          "error",
+          "Product unavailable",
           error.response?.data?.message ||
             "Failed to load product"
         );
@@ -118,7 +121,11 @@ function SellerEditProduct() {
     }
 
     if (selectedFiles.length > 5) {
-      alert("You can select maximum 5 new images.");
+      showToast(
+        "warning",
+        "Image limit reached",
+        "You can select maximum 5 new images."
+      );
       event.target.value = "";
       return;
     }
@@ -128,7 +135,11 @@ function SellerEditProduct() {
     );
 
     if (invalidFile) {
-      alert("Only image files are allowed.");
+      showToast(
+        "warning",
+        "Invalid file type",
+        "Only image files are allowed."
+      );
       event.target.value = "";
       return;
     }
@@ -138,7 +149,11 @@ function SellerEditProduct() {
     );
 
     if (largeFile) {
-      alert("Each image must be smaller than 5MB.");
+      showToast(
+        "warning",
+        "File too large",
+        "Each image must be smaller than 5MB."
+      );
       event.target.value = "";
       return;
     }
@@ -150,16 +165,21 @@ function SellerEditProduct() {
   // Remove Existing Image
   // ----------------------------------
   const handleRemoveExistingImage = (image) => {
-    if (!image?.publicId) {
+    const publicId =
+      typeof image === "string"
+        ? ""
+        : image?.publicId || "";
+
+    if (!publicId) {
       return;
     }
 
     setRemoveImages((previous) => {
-      if (previous.includes(image.publicId)) {
+      if (previous.includes(publicId)) {
         return previous;
       }
 
-      return [...previous, image.publicId];
+      return [...previous, publicId];
     });
   };
 
@@ -322,7 +342,9 @@ function SellerEditProduct() {
         }
       );
 
-      alert(
+      showToast(
+        "success",
+        "Product updated",
         response.data?.message ||
           "Product updated successfully"
       );
@@ -334,8 +356,11 @@ function SellerEditProduct() {
         error
       );
 
-      alert(
+      showToast(
+        "error",
+        "Product update failed",
         error.response?.data?.message ||
+          error.response?.data?.error ||
           "Failed to update product"
       );
     } finally {
@@ -366,11 +391,26 @@ function SellerEditProduct() {
 
   const existingImages = product.images || [];
 
+  const getExistingImagePublicId = (image) =>
+    typeof image === "string"
+      ? ""
+      : image?.publicId || "";
+
+  const getExistingImageUrl = (image) =>
+    typeof image === "string"
+      ? image
+      : image?.url || "";
+
   const visibleExistingImages =
-    existingImages.filter(
-      (image) =>
-        !removeImages.includes(image.publicId)
-    );
+    existingImages.filter((image) => {
+      const publicId =
+        getExistingImagePublicId(image);
+
+      return (
+        !publicId ||
+        !removeImages.includes(publicId)
+      );
+    });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -672,21 +712,27 @@ function SellerEditProduct() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                   {existingImages.map(
                     (image, index) => {
-                      const isRemoved =
-                        removeImages.includes(
-                          image.publicId
+                      const imageUrl =
+                        getExistingImageUrl(image);
+                      const publicId =
+                        getExistingImagePublicId(
+                          image
                         );
+                      const isRemoved =
+                        publicId &&
+                        removeImages.includes(publicId);
 
                       return (
                         <div
                           key={
-                            image.publicId ||
+                            publicId ||
+                            imageUrl ||
                             index
                           }
                           className="relative"
                         >
                           <img
-                            src={image.url}
+                            src={imageUrl}
                             alt={`${formData.name} ${
                               index + 1
                             }`}
@@ -702,7 +748,7 @@ function SellerEditProduct() {
                               type="button"
                               onClick={() =>
                                 handleRestoreExistingImage(
-                                  image.publicId
+                                  publicId
                                 )
                               }
                               className="absolute inset-0 m-auto w-fit h-fit px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg"
@@ -717,6 +763,7 @@ function SellerEditProduct() {
                                   image
                                 )
                               }
+                              disabled={!publicId}
                               className="absolute top-2 right-2 w-7 h-7 bg-red-600 text-white rounded-full flex items-center justify-center hover:bg-red-700"
                             >
                               ×
