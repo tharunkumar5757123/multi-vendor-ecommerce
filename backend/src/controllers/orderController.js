@@ -1,839 +1,589 @@
+const mongoose = require("mongoose");
 
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+const Order = require("../models/Order");
+const Cart = require("../models/Cart");
+const Product = require("../models/Product");
+const Address = require("../models/Address");
 
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
-import Loader from "../components/Loader";
-import api from "../services/api";
+// =====================================================
+// CREATE ORDER
+// =====================================================
+const createOrder = async (req, res, next) => {
+  const session = await mongoose.startSession();
 
-import {
-  addWishlistProduct,
-  removeWishlistProduct,
-} from "../redux/slices/wishlistSlice";
+  try {
+    const { addressId, paymentMethod } = req.body;
 
-function ProductDetails() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
+    if (!addressId) {
+      return res.status(400).json({
+        message: "Delivery address is required",
+      });
+    }
 
-  const { isAuthenticated, user } = useSelector(
-    (state) => state.auth
-  );
+    if (!["cod", "online"].includes(paymentMethod)) {
+      return res.status(400).json({
+        message: "Invalid payment method",
+      });
+    }
 
-  const wishlistProducts = useSelector(
-    (state) => state.wishlist.products || []
-  );
+    session.startTransaction();
 
-  const [product, setProduct] = useState(null);
-  const [reviews, setReviews] = useState([]);
+    // Get address
+    const address = await Address.findOne({
+      _id: addressId,
+      user: req.user._id,
+    }).session(session);
 
-  const [loading, setLoading] = useState(true);
-  const [reviewLoading, setReviewLoading] = useState(false);
-  const [cartLoading, setCartLoading] = useState(false);
-  const [wishlistLoading, setWishlistLoading] = useState(false);
+    if (!address) {
+      await session.abortTransaction();
 
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [quantity, setQuantity] = useState(1);
+      return res.status(404).json({
+        message: "Delivery address not found",
+      });
+    }
 
-  const [reviewForm, setReviewForm] = useState({
-    rating: 5,
-    comment: "",
-  });
+    // Get cart
+    const cart = await Cart.findOne({
+      user: req.user._id,
+    })
+      .populate("items.product")
+      .session(session);
 
-  const isCustomer =
-    isAuthenticated && user?.role === "customer";
+    if (!cart || !cart.items || cart.items.length === 0) {
+      await session.abortTransaction();
 
-  const isWishlisted = wishlistProducts.some(
-    (item) => item?._id === id
-  );
+      return res.status(400).json({
+        message: "Your cart is empty",
+      });
+    }
 
-  // ---------------------------------------
-  // Fetch Product
-  // ---------------------------------------
-  const fetchProduct = async () => {
-    try {
-      setLoading(true);
+    const orderItems = [];
+    let subtotal = 0;
 
-      const response = await api.get(`/products/${id}`);
+    // ================================================
+    // Validate products and calculate subtotal
+    // ================================================
+    for (const cartItem of cart.items) {
+      const product = cartItem.product;
 
-      setProduct(response.data.product || response.data);
-    } catch (error) {
-      console.error("Product fetch error:", error);
+      if (!product) {
+        await session.abortTransaction();
 
-      if (error.response?.status === 404) {
-        setProduct(null);
+        return res.status(400).json({
+          message: "One or more products are no longer available",
+        });
       }
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // ---------------------------------------
-  // Fetch Reviews
-  // ---------------------------------------
-  const fetchReviews = async () => {
-    try {
-      const response = await api.get(
-        `/reviews/product/${id}`
-      );
+      if (!product.isActive) {
+        await session.abortTransaction();
 
-      setReviews(
-        response.data.reviews || response.data || []
-      );
-    } catch (error) {
-      console.error("Reviews fetch error:", error);
-      setReviews([]);
-    }
-  };
-
-  useEffect(() => {
-    setSelectedImage(0);
-    setQuantity(1);
-
-    fetchProduct();
-    fetchReviews();
-  }, [id]);
-
-  // ---------------------------------------
-  // Add To Cart
-  // ---------------------------------------
-  const handleAddToCart = async () => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-
-    if (!isCustomer) {
-      alert("Only customers can add products to the cart.");
-      return;
-    }
-
-    if (!product || product.stock <= 0) {
-      return;
-    }
-
-    try {
-      setCartLoading(true);
-
-      await api.post("/cart", {
-        productId: product._id,
-        quantity,
-      });
-
-      alert("Product added to cart successfully.");
-    } catch (error) {
-      console.error("Add to cart error:", error);
-
-      alert(
-        error.response?.data?.message ||
-          "Failed to add product to cart."
-      );
-    } finally {
-      setCartLoading(false);
-    }
-  };
-
-  // ---------------------------------------
-  // Buy Now
-  // ---------------------------------------
-  const handleBuyNow = async () => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-
-    if (!isCustomer) {
-      alert("Only customers can purchase products.");
-      return;
-    }
-
-    if (!product || product.stock <= 0) {
-      return;
-    }
-
-    try {
-      setCartLoading(true);
-
-      await api.post("/cart", {
-        productId: product._id,
-        quantity,
-      });
-
-      navigate("/cart");
-    } catch (error) {
-      console.error("Buy now error:", error);
-
-      alert(
-        error.response?.data?.message ||
-          "Unable to continue."
-      );
-    } finally {
-      setCartLoading(false);
-    }
-  };
-
-  // ---------------------------------------
-  // Wishlist
-  // ---------------------------------------
-  const handleWishlist = async () => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-
-    if (!isCustomer) {
-      alert("Only customers can use the wishlist.");
-      return;
-    }
-
-    try {
-      setWishlistLoading(true);
-
-      if (isWishlisted) {
-        await api.delete(`/wishlist/${product._id}`);
-
-        dispatch(removeWishlistProduct(product._id));
-      } else {
-        const response = await api.post(
-          `/wishlist/${product._id}`
-        );
-
-        const addedProduct =
-          response.data?.wishlist?.find(
-            (item) => item?._id === product._id
-          ) || product;
-
-        dispatch(addWishlistProduct(addedProduct));
+        return res.status(400).json({
+          message: `${product.name} is no longer available`,
+        });
       }
-    } catch (error) {
-      console.error("Wishlist error:", error);
 
-      alert(
-        error.response?.data?.message ||
-          "Failed to update wishlist."
+      if (product.stock <= 0) {
+        await session.abortTransaction();
+
+        return res.status(400).json({
+          message: `${product.name} is out of stock`,
+        });
+      }
+
+      if (cartItem.quantity > product.stock) {
+        await session.abortTransaction();
+
+        return res.status(400).json({
+          message: `Only ${product.stock} units of ${product.name} are available`,
+        });
+      }
+
+      const price =
+        product.discountPrice &&
+        product.discountPrice < product.price
+          ? product.discountPrice
+          : product.price;
+
+      const itemTotal = price * cartItem.quantity;
+
+      subtotal += itemTotal;
+
+      orderItems.push({
+        product: product._id,
+        seller: product.seller,
+        name: product.name,
+        price,
+        quantity: cartItem.quantity,
+        image: product.images?.[0] || "",
+        status: "placed",
+      });
+    }
+
+    // ================================================
+    // Shipping
+    // Free shipping for orders >= ₹1000
+    // ================================================
+    const shippingPrice = subtotal >= 1000 ? 0 : 50;
+
+    // ================================================
+    // Tax - 5%
+    // ================================================
+    const tax = Number((subtotal * 0.05).toFixed(2));
+
+    // ================================================
+    // Final total
+    // ================================================
+    const totalAmount = Number(
+      (subtotal + shippingPrice + tax).toFixed(2)
+    );
+
+    // ================================================
+    // Address snapshot
+    // ================================================
+    const shippingAddress = {
+      fullName: address.fullName,
+      phone: address.phone,
+      addressLine1: address.addressLine1,
+      addressLine2: address.addressLine2 || "",
+      city: address.city,
+      state: address.state,
+      postalCode: address.postalCode,
+      country: address.country || "India",
+    };
+
+    // ================================================
+    // Create order
+    // ================================================
+    const createdOrders = await Order.create(
+      [
+        {
+          user: req.user._id,
+
+          items: orderItems,
+
+          shippingAddress,
+
+          subtotal,
+
+          shippingPrice,
+
+          tax,
+
+          totalAmount,
+
+          paymentMethod,
+
+          paymentStatus:
+            paymentMethod === "cod" ? "pending" : "pending",
+
+          orderStatus: "placed",
+
+          paidAt: null,
+
+          deliveredAt: null,
+        },
+      ],
+      { session }
+    );
+
+    const order = createdOrders[0];
+
+    // ================================================
+    // Reduce product stock
+    // ================================================
+    for (const cartItem of cart.items) {
+      const product = cartItem.product;
+
+      await Product.findByIdAndUpdate(
+        product._id,
+        {
+          $inc: {
+            stock: -cartItem.quantity,
+          },
+        },
+        { session }
       );
-    } finally {
-      setWishlistLoading(false);
-    }
-  };
-
-  // ---------------------------------------
-  // Quantity Controls
-  // ---------------------------------------
-  const increaseQuantity = () => {
-    if (!product) return;
-
-    if (quantity < product.stock) {
-      setQuantity((previous) => previous + 1);
-    }
-  };
-
-  const decreaseQuantity = () => {
-    if (quantity > 1) {
-      setQuantity((previous) => previous - 1);
-    }
-  };
-
-  // ---------------------------------------
-  // Review Form
-  // ---------------------------------------
-  const handleReviewChange = (e) => {
-    setReviewForm((previous) => ({
-      ...previous,
-      [e.target.name]: e.target.value,
-    }));
-  };
-
-  // ---------------------------------------
-  // Submit Review
-  // ---------------------------------------
-  const handleSubmitReview = async (e) => {
-    e.preventDefault();
-
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
     }
 
-    if (!isCustomer) {
-      alert("Only customers can submit reviews.");
-      return;
-    }
+    // ================================================
+    // Clear cart
+    // ================================================
+    cart.items = [];
 
-    if (!reviewForm.comment.trim()) {
-      alert("Please enter a review.");
-      return;
-    }
+    await cart.save({ session });
 
+    // Commit transaction
+    await session.commitTransaction();
+
+    // Populate response
+    const populatedOrder = await Order.findById(order._id)
+      .populate("items.product", "name brand images")
+      .populate("items.seller", "name email");
+
+    return res.status(201).json({
+      message: "Order created successfully",
+      order: populatedOrder,
+    });
+  } catch (error) {
     try {
-      setReviewLoading(true);
-
-      await api.post(`/reviews/product/${id}`, {
-        rating: Number(reviewForm.rating),
-        comment: reviewForm.comment.trim(),
-      });
-
-      alert("Review submitted successfully.");
-
-      setReviewForm({
-        rating: 5,
-        comment: "",
-      });
-
-      await fetchReviews();
-      await fetchProduct();
-    } catch (error) {
-      console.error("Review error:", error);
-
-      alert(
-        error.response?.data?.message ||
-          "Failed to submit review."
+      await session.abortTransaction();
+    } catch (transactionError) {
+      console.error(
+        "Transaction rollback error:",
+        transactionError
       );
-    } finally {
-      setReviewLoading(false);
-    }
-  };
-
-  // ---------------------------------------
-  // Loading
-  // ---------------------------------------
-  if (loading) {
-    return (
-      <>
-        <Navbar />
-
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <Loader />
-        </div>
-
-        <Footer />
-      </>
-    );
-  }
-
-  // ---------------------------------------
-  // Product Not Found
-  // ---------------------------------------
-  if (!product) {
-    return (
-      <>
-        <Navbar />
-
-        <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
-          <div className="mb-5 text-6xl">📦</div>
-
-          <h2 className="mb-3 text-2xl font-bold text-gray-800">
-            Product Not Found
-          </h2>
-
-          <p className="mb-6 text-center text-gray-500">
-            The product you are looking for does not exist
-            or may have been removed.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => navigate("/products")}
-            className="rounded-lg bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-700"
-          >
-            Browse Products
-          </button>
-        </div>
-
-        <Footer />
-      </>
-    );
-  }
-
-  // ---------------------------------------
-  // Product Images
-  // ---------------------------------------
-  const images =
-    product.images?.length > 0 ? product.images : [];
-
-  const getImageUrl = (image) => {
-    if (typeof image === "string") {
-      return image;
     }
 
-    return image?.url || "";
-  };
+    next(error);
+  } finally {
+    session.endSession();
+  }
+};
 
-  const mainImage =
-    images.length > 0 && getImageUrl(images[selectedImage])
-      ? getImageUrl(images[selectedImage])
-      : "https://via.placeholder.com/600x600?text=No+Image";
+// =====================================================
+// GET MY ORDERS - CUSTOMER
+// =====================================================
+const getMyOrders = async (req, res, next) => {
+  try {
+    const orders = await Order.find({
+      user: req.user._id,
+    })
+      .populate("items.product", "name brand images")
+      .populate("items.seller", "name email")
+      .sort({ createdAt: -1 });
 
-  // ---------------------------------------
-  // Pricing
-  // ---------------------------------------
-  const hasDiscount =
-    product.discountPrice &&
-    product.discountPrice < product.price;
+    res.status(200).json({
+      message: "Orders fetched successfully",
+      orders,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-  const discountPercentage = hasDiscount
-    ? Math.round(
-        ((product.price - product.discountPrice) /
-          product.price) *
-          100
+// =====================================================
+// GET SINGLE ORDER
+// =====================================================
+const getOrderById = async (req, res, next) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate("items.product", "name brand images")
+      .populate("items.seller", "name email");
+
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found",
+      });
+    }
+
+    // Customer can only see their own order
+    if (
+      req.user.role === "customer" &&
+      order.user.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        message: "You are not authorized to view this order",
+      });
+    }
+
+    res.status(200).json({
+      message: "Order fetched successfully",
+      order,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// =====================================================
+// CANCEL ORDER - CUSTOMER
+// =====================================================
+const cancelOrder = async (req, res, next) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const order = await Order.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    }).session(session);
+
+    if (!order) {
+      await session.abortTransaction();
+
+      return res.status(404).json({
+        message: "Order not found",
+      });
+    }
+
+    // Cannot cancel already shipped/delivered/cancelled
+    if (
+      ["shipped", "delivered", "cancelled"].includes(
+        order.orderStatus
       )
-    : 0;
+    ) {
+      await session.abortTransaction();
 
-  const displayPrice =
-    product.discountPrice || product.price;
+      return res.status(400).json({
+        message: `Order cannot be cancelled because it is already ${order.orderStatus}`,
+      });
+    }
 
-  return (
-    <>
-      <Navbar />
+    // Restore product stock
+    for (const item of order.items) {
+      if (item.product) {
+        await Product.findByIdAndUpdate(
+          item.product,
+          {
+            $inc: {
+              stock: item.quantity,
+            },
+          },
+          { session }
+        );
+      }
+    }
 
-      <main className="min-h-screen bg-gray-50">
-        {/* Breadcrumb */}
-        <div className="mx-auto max-w-7xl px-4 py-5">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="transition hover:text-indigo-600"
-            >
-              Home
-            </button>
+    order.orderStatus = "cancelled";
 
-            <span>/</span>
+    // Online payment is not automatically refunded here.
+    // Refund handling can be added separately through Stripe.
+    if (order.paymentStatus !== "paid") {
+      order.paymentStatus = "cancelled";
+    }
 
-            <button
-              type="button"
-              onClick={() => navigate("/products")}
-              className="transition hover:text-indigo-600"
-            >
-              Products
-            </button>
+    await order.save({ session });
 
-            <span>/</span>
+    await session.commitTransaction();
 
-            <span className="truncate text-gray-800">
-              {product.name}
-            </span>
-          </div>
-        </div>
+    const updatedOrder = await Order.findById(order._id)
+      .populate("items.product", "name brand images")
+      .populate("items.seller", "name email");
 
-        {/* Product Details */}
-        <section className="mx-auto max-w-7xl px-4 pb-12">
-          <div className="grid gap-10 rounded-2xl bg-white p-5 shadow-sm md:p-8 lg:grid-cols-2">
-            {/* Images */}
-            <div>
-              {/* Main Image */}
-              <div className="relative flex h-[420px] items-center justify-center overflow-hidden rounded-xl bg-gray-100">
-                <img
-                  src={mainImage}
-                  alt={product.name}
-                  className="h-full w-full object-contain"
-                  onError={(e) => {
-                    e.currentTarget.src =
-                      "https://via.placeholder.com/600x600?text=No+Image";
-                  }}
-                />
+    res.status(200).json({
+      message: "Order cancelled successfully",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    try {
+      await session.abortTransaction();
+    } catch (transactionError) {
+      console.error(
+        "Transaction rollback error:",
+        transactionError
+      );
+    }
 
-                {hasDiscount && (
-                  <span className="absolute left-4 top-4 rounded-full bg-red-500 px-4 py-2 text-sm font-bold text-white shadow">
-                    {discountPercentage}% OFF
-                  </span>
-                )}
-              </div>
+    next(error);
+  } finally {
+    session.endSession();
+  }
+};
 
-              {/* Thumbnail Images */}
-              {images.length > 0 && (
-                <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
-                  {images.map((image, index) => (
-                    <button
-                      type="button"
-                      key={index}
-                      onClick={() => setSelectedImage(index)}
-                      className={`h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition ${
-                        selectedImage === index
-                          ? "border-indigo-600 ring-2 ring-indigo-100"
-                          : "border-gray-200 hover:border-gray-400"
-                      }`}
-                    >
-                      <img
-                        src={getImageUrl(image)}
-                        alt={`${product.name} ${index + 1}`}
-                        className="h-full w-full object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+// =====================================================
+// GET SELLER ORDERS
+// =====================================================
+const getSellerOrders = async (req, res, next) => {
+  try {
+    const orders = await Order.find({
+      "items.seller": req.user._id,
+    })
+      .populate("items.product", "name brand images")
+      .populate("items.seller", "name email")
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
 
-            {/* Information */}
-            <div className="flex flex-col">
-              {product.brand && (
-                <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-indigo-600">
-                  {product.brand}
-                </p>
-              )}
+    // Only return seller's own items
+    const sellerOrders = orders.map((order) => {
+      const orderObject = order.toObject();
 
-              <h1 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">
-                {product.name}
-              </h1>
+      orderObject.items = orderObject.items.filter(
+        (item) =>
+          item.seller &&
+          item.seller._id.toString() ===
+            req.user._id.toString()
+      );
 
-              {/* Rating */}
-              <div className="mb-5 flex items-center gap-3">
-                <div className="flex text-lg">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <span
-                      key={star}
-                      className={
-                        star <= Math.round(product.rating || 0)
-                          ? "text-yellow-400"
-                          : "text-gray-300"
-                      }
-                    >
-                      ★
-                    </span>
-                  ))}
-                </div>
+      return orderObject;
+    });
 
-                <span className="text-sm text-gray-500">
-                  {Number(product.rating || 0).toFixed(1)} (
-                  {product.numReviews || 0} reviews)
-                </span>
-              </div>
+    res.status(200).json({
+      message: "Seller orders fetched successfully",
+      orders: sellerOrders,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-              {/* Price */}
-              <div className="mb-5 flex flex-wrap items-center gap-4">
-                <span className="text-3xl font-bold text-gray-900">
-                  ₹
-                  {Number(displayPrice || 0).toLocaleString(
-                    "en-IN"
-                  )}
-                </span>
+// =====================================================
+// UPDATE ORDER STATUS - SELLER
+// =====================================================
+const updateOrderStatusBySeller = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const { orderId } = req.params;
+    const { productId, status } = req.body;
 
-                {hasDiscount && (
-                  <>
-                    <span className="text-lg text-gray-400 line-through">
-                      ₹
-                      {Number(product.price).toLocaleString(
-                        "en-IN"
-                      )}
-                    </span>
+    const allowedStatuses = [
+      "confirmed",
+      "processing",
+      "shipped",
+      "delivered",
+      "cancelled",
+    ];
 
-                    <span className="font-semibold text-green-600">
-                      Save ₹
-                      {Number(
-                        product.price -
-                          product.discountPrice
-                      ).toLocaleString("en-IN")}
-                    </span>
-                  </>
-                )}
-              </div>
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        message: "Invalid order status",
+      });
+    }
 
-              {/* Description */}
-              <div className="mb-6 border-t border-gray-200 pt-5">
-                <h3 className="mb-2 text-lg font-semibold text-gray-900">
-                  Description
-                </h3>
+    const order = await Order.findById(orderId);
 
-                <p className="leading-7 text-gray-600">
-                  {product.description ||
-                    "No description available for this product."}
-                </p>
-              </div>
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found",
+      });
+    }
 
-              {/* Product Information */}
-              <div className="mb-6 grid grid-cols-2 gap-4 border-y border-gray-200 py-5">
-                <div>
-                  <p className="text-sm text-gray-500">
-                    SKU
-                  </p>
+    const item = order.items.find(
+      (orderItem) =>
+        orderItem.product &&
+        orderItem.product.toString() === productId &&
+        orderItem.seller &&
+        orderItem.seller.toString() ===
+          req.user._id.toString()
+    );
 
-                  <p className="font-semibold text-gray-800">
-                    {product.sku || "N/A"}
-                  </p>
-                </div>
+    if (!item) {
+      return res.status(403).json({
+        message:
+          "You are not authorized to update this order item",
+      });
+    }
 
-                <div>
-                  <p className="text-sm text-gray-500">
-                    Stock
-                  </p>
+    // Status progression
+    const statusOrder = [
+      "placed",
+      "confirmed",
+      "processing",
+      "shipped",
+      "delivered",
+    ];
 
-                  <p
-                    className={`font-semibold ${
-                      product.stock > 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {product.stock > 0
-                      ? `${product.stock} available`
-                      : "Out of Stock"}
-                  </p>
-                </div>
+    if (
+      status !== "cancelled" &&
+      statusOrder.indexOf(status) <
+        statusOrder.indexOf(item.status)
+    ) {
+      return res.status(400).json({
+        message: "Order status cannot move backwards",
+      });
+    }
 
-                {product.category && (
-                  <div>
-                    <p className="text-sm text-gray-500">
-                      Category
-                    </p>
+    item.status = status;
 
-                    <p className="font-semibold text-gray-800">
-                      {typeof product.category === "string"
-                        ? product.category
-                        : product.category?.name || "N/A"}
-                    </p>
-                  </div>
-                )}
+    // If seller cancels their item, restore stock
+    if (status === "cancelled") {
+      await Product.findByIdAndUpdate(item.product, {
+        $inc: {
+          stock: item.quantity,
+        },
+      });
+    }
 
-                {product.seller && (
-                  <div>
-                    <p className="text-sm text-gray-500">
-                      Seller
-                    </p>
+    // ================================================
+    // Calculate overall order status
+    // ================================================
+    const itemStatuses = order.items.map(
+      (orderItem) => orderItem.status
+    );
 
-                    <p className="font-semibold text-gray-800">
-                      {typeof product.seller === "string"
-                        ? product.seller
-                        : product.seller?.name || "N/A"}
-                    </p>
-                  </div>
-                )}
-              </div>
+    if (
+      itemStatuses.every(
+        (itemStatus) => itemStatus === "delivered"
+      )
+    ) {
+      order.orderStatus = "delivered";
+      order.deliveredAt = new Date();
+    } else if (
+      itemStatuses.some(
+        (itemStatus) => itemStatus === "shipped"
+      )
+    ) {
+      order.orderStatus = "shipped";
+    } else if (
+      itemStatuses.some(
+        (itemStatus) => itemStatus === "processing"
+      )
+    ) {
+      order.orderStatus = "processing";
+    } else if (
+      itemStatuses.some(
+        (itemStatus) => itemStatus === "confirmed"
+      )
+    ) {
+      order.orderStatus = "confirmed";
+    } else if (
+      itemStatuses.every(
+        (itemStatus) => itemStatus === "cancelled"
+      )
+    ) {
+      order.orderStatus = "cancelled";
+    } else {
+      order.orderStatus = "placed";
+    }
 
-              {/* Quantity */}
-              {product.stock > 0 && (
-                <div className="mb-5">
-                  <p className="mb-2 text-sm font-semibold text-gray-700">
-                    Quantity
-                  </p>
+    await order.save();
 
-                  <div className="flex w-fit items-center overflow-hidden rounded-lg border border-gray-300">
-                    <button
-                      type="button"
-                      onClick={decreaseQuantity}
-                      disabled={quantity <= 1}
-                      className="px-4 py-2 text-lg transition hover:bg-gray-100 disabled:opacity-40"
-                    >
-                      −
-                    </button>
+    const updatedOrder = await Order.findById(order._id)
+      .populate("items.product", "name brand images")
+      .populate("items.seller", "name email")
+      .populate("user", "name email");
 
-                    <span className="min-w-12 border-x border-gray-300 px-4 py-2 text-center font-semibold">
-                      {quantity}
-                    </span>
+    res.status(200).json({
+      message: "Order status updated successfully",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-                    <button
-                      type="button"
-                      onClick={increaseQuantity}
-                      disabled={
-                        quantity >= product.stock
-                      }
-                      className="px-4 py-2 text-lg transition hover:bg-gray-100 disabled:opacity-40"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              )}
+// =====================================================
+// GET ALL ORDERS - ADMIN
+// =====================================================
+const getAllOrders = async (req, res, next) => {
+  try {
+    const orders = await Order.find()
+      .populate("user", "name email")
+      .populate("items.product", "name brand images")
+      .populate("items.seller", "name email")
+      .sort({ createdAt: -1 });
 
-              {/* Buttons */}
-              <div className="mt-auto flex flex-col gap-3 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={handleAddToCart}
-                  disabled={
-                    product.stock <= 0 || cartLoading
-                  }
-                  className="flex-1 rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-                >
-                  {cartLoading
-                    ? "Processing..."
-                    : product.stock <= 0
-                    ? "Out of Stock"
-                    : "Add to Cart"}
-                </button>
+    res.status(200).json({
+      message: "All orders fetched successfully",
+      orders,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-                <button
-                  type="button"
-                  onClick={handleBuyNow}
-                  disabled={
-                    product.stock <= 0 || cartLoading
-                  }
-                  className="flex-1 rounded-xl bg-gray-900 px-6 py-3 font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-gray-400"
-                >
-                  Buy Now
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleWishlist}
-                  disabled={wishlistLoading}
-                  className={`rounded-xl border px-5 py-3 font-semibold transition ${
-                    isWishlisted
-                      ? "border-red-500 bg-red-50 text-red-500"
-                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  {wishlistLoading
-                    ? "Saving..."
-                    : isWishlisted
-                    ? "♥ Saved"
-                    : "♡ Wishlist"}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Reviews */}
-          <section className="mt-10 grid gap-8 lg:grid-cols-3">
-            {/* Review Form */}
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="mb-5 text-xl font-bold text-gray-900">
-                Write a Review
-              </h2>
-
-              {!isAuthenticated ? (
-                <div className="rounded-xl bg-gray-50 p-5 text-center">
-                  <p className="mb-4 text-sm text-gray-600">
-                    Please login to write a review.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate("/login")}
-                    className="rounded-lg bg-indigo-600 px-5 py-2 font-semibold text-white transition hover:bg-indigo-700"
-                  >
-                    Login to Review
-                  </button>
-                </div>
-              ) : !isCustomer ? (
-                <div className="rounded-xl bg-gray-50 p-5 text-center text-sm text-gray-600">
-                  Only customers can submit product reviews.
-                </div>
-              ) : (
-                <form onSubmit={handleSubmitReview}>
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">
-                    Rating
-                  </label>
-
-                  <select
-                    name="rating"
-                    value={reviewForm.rating}
-                    onChange={handleReviewChange}
-                    className="mb-4 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                  >
-                    <option value="5">
-                      ★★★★★ - Excellent
-                    </option>
-                    <option value="4">
-                      ★★★★ - Good
-                    </option>
-                    <option value="3">
-                      ★★★ - Average
-                    </option>
-                    <option value="2">
-                      ★★ - Poor
-                    </option>
-                    <option value="1">
-                      ★ - Very Poor
-                    </option>
-                  </select>
-
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">
-                    Comment
-                  </label>
-
-                  <textarea
-                    name="comment"
-                    value={reviewForm.comment}
-                    onChange={handleReviewChange}
-                    rows="5"
-                    placeholder="Share your experience..."
-                    className="mb-4 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                  />
-
-                  <button
-                    type="submit"
-                    disabled={reviewLoading}
-                    className="w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-                  >
-                    {reviewLoading
-                      ? "Submitting..."
-                      : "Submit Review"}
-                  </button>
-                </form>
-              )}
-            </div>
-
-            {/* Review List */}
-            <div className="rounded-2xl bg-white p-6 shadow-sm lg:col-span-2">
-              <h2 className="mb-6 text-xl font-bold text-gray-900">
-                Customer Reviews
-              </h2>
-
-              {reviews.length === 0 ? (
-                <div className="py-10 text-center text-gray-500">
-                  No reviews yet. Be the first to review this
-                  product.
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  {reviews.map((review) => (
-                    <div
-                      key={review._id}
-                      className="border-b border-gray-200 pb-5 last:border-b-0"
-                    >
-                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {review.user?.name ||
-                              review.user?.email ||
-                              "Customer"}
-                          </p>
-
-                          <div className="flex text-sm">
-                            {[1, 2, 3, 4, 5].map(
-                              (star) => (
-                                <span
-                                  key={star}
-                                  className={
-                                    star <= review.rating
-                                      ? "text-yellow-400"
-                                      : "text-gray-300"
-                                  }
-                                >
-                                  ★
-                                </span>
-                              )
-                            )}
-                          </div>
-                        </div>
-
-                        {review.createdAt && (
-                          <span className="text-xs text-gray-400">
-                            {new Date(
-                              review.createdAt
-                            ).toLocaleDateString("en-IN")}
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-gray-600">
-                        {review.comment}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        </section>
-      </main>
-
-      <Footer />
-    </>
-  );
-}
-
-export default ProductDetails;
+// =====================================================
+// EXPORTS
+// =====================================================
+module.exports = {
+  createOrder,
+  getMyOrders,
+  getOrderById,
+  cancelOrder,
+  getSellerOrders,
+  updateOrderStatusBySeller,
+  getAllOrders,
+};
