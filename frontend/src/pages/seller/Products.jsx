@@ -1,24 +1,34 @@
+
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import Navbar from "../../components/Navbar";
 import api from "../../services/api";
 
 function Products() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  // ======================================================
-  // Get All Products for Admin
-  // ======================================================
+  const [products, setProducts] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState("");
 
   const fetchProducts = async () => {
     try {
-      const response = await api.get("/products/admin/all");
+      setLoading(true);
+      setError("");
+
+      const response = await api.get(
+        "/products/seller/my-products"
+      );
 
       setProducts(response.data.products || []);
     } catch (error) {
-      console.error("PRODUCTS ERROR:", error);
+      console.error(
+        "SELLER PRODUCTS ERROR:",
+        error
+      );
 
       setError(
         error.response?.data?.message ||
@@ -33,61 +43,21 @@ function Products() {
     fetchProducts();
   }, []);
 
-  // ======================================================
-  // Activate / Deactivate Product
-  // ======================================================
-
-  const handleStatusChange = async (product) => {
-    try {
-      const response = await api.put(
-        `/products/${product._id}/status`,
-        {
-          isActive: !product.isActive,
-        }
-      );
-
-      setProducts((previousProducts) =>
-        previousProducts.map((item) =>
-          item._id === product._id
-            ? response.data.product
-            : item
-        )
-      );
-    } catch (error) {
-      console.error(
-        "STATUS UPDATE ERROR:",
-        error
-      );
-
-      alert(
-        error.response?.data?.message ||
-          "Failed to update product status"
-      );
-    }
-  };
-
-  // ======================================================
-  // Delete Product
-  // ======================================================
-
   const handleDelete = async (productId) => {
-    const confirmDelete = window.confirm(
+    const confirmed = window.confirm(
       "Are you sure you want to delete this product?"
     );
 
-    if (!confirmDelete) {
+    if (!confirmed) {
       return;
     }
 
     try {
-      await api.delete(
-        `/products/${productId}`
-      );
+      await api.delete(`/products/${productId}`);
 
       setProducts((previousProducts) =>
         previousProducts.filter(
-          (product) =>
-            product._id !== productId
+          (product) => product._id !== productId
         )
       );
     } catch (error) {
@@ -96,20 +66,16 @@ function Products() {
         error
       );
 
-      alert(
+      setError(
         error.response?.data?.message ||
           "Failed to delete product"
       );
     }
   };
 
-  // ======================================================
-  // Loading
-  // ======================================================
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <p className="text-gray-600">
           Loading products...
         </p>
@@ -117,25 +83,34 @@ function Products() {
     );
   }
 
-  // ======================================================
-  // UI
-  // ======================================================
-
   return (
     <div className="min-h-screen bg-gray-100">
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* Page Header */}
-        <div>
-          <h1 className="text-4xl font-bold text-gray-800">
-            Product Management
-          </h1>
+        {/* Header */}
+        <div className="flex items-center justify-between">
 
-          <p className="text-gray-600 mt-2">
-            Manage all products in the marketplace
-          </p>
+          <div>
+            <h1 className="text-4xl font-bold text-gray-800">
+              My Products
+            </h1>
+
+            <p className="text-gray-600 mt-2">
+              Manage your products
+            </p>
+          </div>
+
+          <button
+            onClick={() =>
+              navigate("/seller/products/add")
+            }
+            className="bg-blue-600 text-white px-5 py-3 rounded-lg hover:bg-blue-700"
+          >
+            + Add Product
+          </button>
+
         </div>
 
         {/* Error */}
@@ -145,22 +120,29 @@ function Products() {
           </div>
         )}
 
-        {/* Product Table */}
-        <div className="bg-white rounded-xl shadow mt-8 overflow-hidden">
+        {/* Product count */}
+        <div className="mt-6">
+          <p className="text-gray-600">
+            Total Products:{" "}
+            <span className="font-semibold text-gray-800">
+              {products.length}
+            </span>
+          </p>
+        </div>
+
+        {/* Products table */}
+        <div className="bg-white rounded-xl shadow mt-6 overflow-hidden">
 
           <div className="overflow-x-auto">
 
             <table className="w-full text-left">
 
-              {/* Table Header */}
               <thead className="bg-gray-50">
+
                 <tr>
-                  <th className="px-6 py-4">
-                    Product
-                  </th>
 
                   <th className="px-6 py-4">
-                    Seller
+                    Product
                   </th>
 
                   <th className="px-6 py-4">
@@ -176,33 +158,46 @@ function Products() {
                   </th>
 
                   <th className="px-6 py-4">
+                    Rating
+                  </th>
+
+                  <th className="px-6 py-4">
                     Status
                   </th>
 
                   <th className="px-6 py-4">
-                    Action
+                    Actions
                   </th>
+
                 </tr>
+
               </thead>
 
-              {/* Table Body */}
               <tbody>
 
                 {products.length === 0 ? (
-
                   <tr>
                     <td
                       colSpan="7"
-                      className="px-6 py-8 text-center text-gray-500"
+                      className="px-6 py-10 text-center text-gray-500"
                     >
-                      No products found
+                      No products found.
+                      <br />
+
+                      <button
+                        onClick={() =>
+                          navigate(
+                            "/seller/products/add"
+                          )
+                        }
+                        className="text-blue-600 mt-2 hover:underline"
+                      >
+                        Add your first product
+                      </button>
                     </td>
                   </tr>
-
                 ) : (
-
                   products.map((product) => (
-
                     <tr
                       key={product._id}
                       className="border-t hover:bg-gray-50"
@@ -211,28 +206,23 @@ function Products() {
                       {/* Product */}
                       <td className="px-6 py-4">
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
 
                           {product.images?.[0]?.url ? (
-
                             <img
                               src={
                                 product.images[0].url
                               }
                               alt={product.name}
-                              className="w-14 h-14 object-cover rounded-lg"
+                              className="w-14 h-14 rounded-lg object-cover"
                             />
-
                           ) : (
-
-                            <div className="w-14 h-14 bg-gray-200 rounded-lg flex items-center justify-center text-xs text-gray-500">
+                            <div className="w-14 h-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs">
                               No Image
                             </div>
-
                           )}
 
                           <div>
-
                             <p className="font-semibold text-gray-800">
                               {product.name}
                             </p>
@@ -240,55 +230,90 @@ function Products() {
                             <p className="text-sm text-gray-500">
                               SKU: {product.sku}
                             </p>
-
                           </div>
 
                         </div>
 
                       </td>
 
-                      {/* Seller */}
-                      <td className="px-6 py-4">
-                        {product.seller?.name ||
-                          "Unknown"}
-                      </td>
-
                       {/* Category */}
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 text-gray-600">
                         {product.category?.name ||
-                          "Unknown"}
+                          "No Category"}
                       </td>
 
                       {/* Price */}
-                      <td className="px-6 py-4 font-medium">
-                        ₹
-                        {product.discountPrice > 0
-                          ? product.discountPrice
-                          : product.price}
+                      <td className="px-6 py-4">
+
+                        {product.discountPrice > 0 ? (
+                          <div>
+
+                            <p className="font-semibold text-green-600">
+                              ₹{product.discountPrice}
+                            </p>
+
+                            <p className="text-sm text-gray-400 line-through">
+                              ₹{product.price}
+                            </p>
+
+                          </div>
+                        ) : (
+                          <p className="font-semibold text-gray-800">
+                            ₹{product.price}
+                          </p>
+                        )}
+
                       </td>
 
                       {/* Stock */}
                       <td className="px-6 py-4">
+
                         <span
                           className={
                             product.stock === 0
-                              ? "text-red-600 font-medium"
-                              : "text-gray-700"
+                              ? "text-red-600 font-semibold"
+                              : product.stock < 10
+                              ? "text-yellow-600 font-semibold"
+                              : "text-green-600 font-semibold"
                           }
                         >
                           {product.stock}
                         </span>
+
+                      </td>
+
+                      {/* Rating */}
+                      <td className="px-6 py-4">
+
+                        <div className="flex items-center gap-1">
+
+                          <span className="text-yellow-500">
+                            ★
+                          </span>
+
+                          <span className="font-medium">
+                            {product.rating
+                              ? product.rating.toFixed(1)
+                              : "0.0"}
+                          </span>
+
+                          <span className="text-sm text-gray-500">
+                            ({product.numReviews || 0})
+                          </span>
+
+                        </div>
+
                       </td>
 
                       {/* Status */}
                       <td className="px-6 py-4">
 
                         <span
-                          className={
+                          className={`px-3 py-1 rounded-full text-sm font-medium ${
                             product.isActive
-                              ? "text-green-600 font-medium"
-                              : "text-red-600 font-medium"
-                          }
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
                         >
                           {product.isActive
                             ? "Active"
@@ -302,25 +327,17 @@ function Products() {
 
                         <div className="flex gap-2">
 
-                          {/* Activate / Deactivate */}
                           <button
                             onClick={() =>
-                              handleStatusChange(
-                                product
+                              navigate(
+                                `/seller/products/edit/${product._id}`
                               )
                             }
-                            className={
-                              product.isActive
-                                ? "bg-yellow-500 text-white px-3 py-2 rounded-lg hover:bg-yellow-600"
-                                : "bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
-                            }
+                            className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700"
                           >
-                            {product.isActive
-                              ? "Deactivate"
-                              : "Activate"}
+                            Edit
                           </button>
 
-                          {/* Delete */}
                           <button
                             onClick={() =>
                               handleDelete(
@@ -337,9 +354,7 @@ function Products() {
                       </td>
 
                     </tr>
-
                   ))
-
                 )}
 
               </tbody>

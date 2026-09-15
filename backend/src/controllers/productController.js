@@ -1,4 +1,3 @@
-// Product Controller
 
 const Product = require("../models/Product");
 const Category = require("../models/Category");
@@ -11,6 +10,7 @@ const fs = require("fs");
 
 // ======================================================
 // Create Product
+// Seller / Admin
 // ======================================================
 
 const createProduct = async (req, res) => {
@@ -26,7 +26,6 @@ const createProduct = async (req, res) => {
       sku,
     } = req.body;
 
-    // Validate required fields
     if (
       !name ||
       !description ||
@@ -40,17 +39,22 @@ const createProduct = async (req, res) => {
       });
     }
 
-    // Check category
-    const categoryExists = await Category.findById(category);
+    // Check active category
+    const categoryExists = await Category.findOne({
+      _id: category,
+      isActive: true,
+    });
 
     if (!categoryExists) {
       return res.status(404).json({
-        message: "Category not found",
+        message: "Active category not found",
       });
     }
 
     // Check SKU
-    const existingProduct = await Product.findOne({ sku });
+    const existingProduct = await Product.findOne({
+      sku: sku.trim(),
+    });
 
     if (existingProduct) {
       return res.status(400).json({
@@ -81,27 +85,30 @@ const createProduct = async (req, res) => {
           publicId: result.publicId,
         });
 
-        // Delete local file after Cloudinary upload
-        fs.unlinkSync(file.path);
+        if (file.path && fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
       }
     }
 
     // Create product
     const product = await Product.create({
-      name,
+      name: name.trim(),
       slug,
-      description,
-      price,
-      discountPrice: discountPrice || 0,
+      description: description.trim(),
+      price: Number(price),
+      discountPrice:
+        discountPrice !== undefined
+          ? Number(discountPrice)
+          : 0,
       images,
-      brand: brand || "",
+      brand: brand ? brand.trim() : "",
       category,
       seller: req.user._id,
-      stock,
-      sku,
+      stock: Number(stock),
+      sku: sku.trim(),
     });
 
-    // Populate category and seller
     await product.populate([
       {
         path: "category",
@@ -114,6 +121,7 @@ const createProduct = async (req, res) => {
     ]);
 
     res.status(201).json({
+      success: true,
       message: "Product created successfully",
       product,
     });
@@ -144,7 +152,6 @@ const getProducts = async (req, res) => {
       limit = 10,
     } = req.query;
 
-    // Customers see only active products
     const filter = {
       isActive: true,
     };
@@ -173,12 +180,12 @@ const getProducts = async (req, res) => {
       ];
     }
 
-    // Category filter
+    // Category
     if (category) {
       filter.category = category;
     }
 
-    // Price filter
+    // Price
     if (minPrice || maxPrice) {
       filter.price = {};
 
@@ -226,7 +233,8 @@ const getProducts = async (req, res) => {
       };
     }
 
-    const totalProducts = await Product.countDocuments(filter);
+    const totalProducts =
+      await Product.countDocuments(filter);
 
     const products = await Product.find(filter)
       .populate("category", "name")
@@ -236,6 +244,7 @@ const getProducts = async (req, res) => {
       .limit(perPage);
 
     res.status(200).json({
+      success: true,
       products,
       pagination: {
         currentPage,
@@ -258,7 +267,7 @@ const getProducts = async (req, res) => {
 
 // ======================================================
 // Admin - Get All Products
-// Includes Active + Inactive Products
+// Active + Inactive
 // ======================================================
 
 const getAllProductsForAdmin = async (req, res) => {
@@ -286,6 +295,36 @@ const getAllProductsForAdmin = async (req, res) => {
 };
 
 // ======================================================
+// Seller - Get My Products
+// ======================================================
+
+const getSellerProducts = async (req, res) => {
+  try {
+    const products = await Product.find({
+      seller: req.user._id,
+    })
+      .populate("category", "name")
+      .populate("seller", "name email")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      products,
+    });
+  } catch (error) {
+    console.error(
+      "Seller get products error:",
+      error
+    );
+
+    res.status(500).json({
+      message: "Failed to fetch seller products",
+      error: error.message,
+    });
+  }
+};
+
+// ======================================================
 // Get Single Product
 // ======================================================
 
@@ -302,6 +341,7 @@ const getProductById = async (req, res) => {
     }
 
     res.status(200).json({
+      success: true,
       product,
     });
   } catch (error) {
@@ -319,6 +359,7 @@ const getProductById = async (req, res) => {
 
 // ======================================================
 // Update Product
+// Seller / Admin
 // ======================================================
 
 const updateProduct = async (req, res) => {
@@ -360,20 +401,23 @@ const updateProduct = async (req, res) => {
     // Check category
     if (category) {
       const categoryExists =
-        await Category.findById(category);
+        await Category.findOne({
+          _id: category,
+          isActive: true,
+        });
 
       if (!categoryExists) {
         return res.status(404).json({
-          message: "Category not found",
+          message: "Active category not found",
         });
       }
     }
 
     // Check SKU
-    if (sku && sku !== product.sku) {
+    if (sku && sku.trim() !== product.sku) {
       const existingSku =
         await Product.findOne({
-          sku,
+          sku: sku.trim(),
           _id: {
             $ne: product._id,
           },
@@ -395,18 +439,28 @@ const updateProduct = async (req, res) => {
           typeof existingImages === "string"
             ? JSON.parse(existingImages)
             : existingImages;
+
+        if (!Array.isArray(keptImages)) {
+          return res.status(400).json({
+            message:
+              "existingImages must be an array",
+          });
+        }
       } catch (error) {
         return res.status(400).json({
           message:
             "Invalid existingImages format",
         });
       }
+    } else {
+      // Keep all existing images
+      keptImages = product.images || [];
     }
 
     // Old images
     const oldImages = product.images || [];
 
-    // Images removed by user
+    // Find removed images
     const imagesToDelete = oldImages.filter(
       (oldImage) =>
         !keptImages.some(
@@ -440,40 +494,79 @@ const updateProduct = async (req, res) => {
           publicId: result.publicId,
         });
 
-        // Delete local file
-        if (file.path) {
+        if (
+          file.path &&
+          fs.existsSync(file.path)
+        ) {
           fs.unlinkSync(file.path);
         }
       }
     }
 
-    // Update product fields
+    // Check if name changed
+    const nameChanged =
+      name !== undefined &&
+      name.trim() !== product.name;
+
+    // Update fields
     product.name =
-      name ?? product.name;
+      name !== undefined
+        ? name.trim()
+        : product.name;
 
     product.description =
-      description ?? product.description;
+      description !== undefined
+        ? description.trim()
+        : product.description;
 
     product.price =
-      price ?? product.price;
+      price !== undefined
+        ? Number(price)
+        : product.price;
 
     product.discountPrice =
       discountPrice !== undefined
-        ? discountPrice
+        ? Number(discountPrice)
         : product.discountPrice;
 
     product.brand =
-      brand ?? product.brand;
+      brand !== undefined
+        ? brand.trim()
+        : product.brand;
 
     product.category =
       category ?? product.category;
 
     product.stock =
-      stock ?? product.stock;
+      stock !== undefined
+        ? Number(stock)
+        : product.stock;
 
     product.sku =
-      sku ?? product.sku;
+      sku !== undefined
+        ? sku.trim()
+        : product.sku;
 
+    // Update slug if name changed
+    if (nameChanged) {
+      let newSlug = generateSlug(name);
+
+      const existingSlug =
+        await Product.findOne({
+          slug: newSlug,
+          _id: {
+            $ne: product._id,
+          },
+        });
+
+      if (existingSlug) {
+        newSlug = `${newSlug}-${Date.now()}`;
+      }
+
+      product.slug = newSlug;
+    }
+
+    // Update images
     product.images = [
       ...keptImages,
       ...newImages,
@@ -481,7 +574,7 @@ const updateProduct = async (req, res) => {
 
     await product.save();
 
-    // Populate category and seller
+    // Populate
     await product.populate([
       {
         path: "category",
@@ -494,6 +587,7 @@ const updateProduct = async (req, res) => {
     ]);
 
     res.status(200).json({
+      success: true,
       message: "Product updated successfully",
       product,
     });
@@ -522,7 +616,6 @@ const updateProductStatus = async (
     const { id } = req.params;
     const { isActive } = req.body;
 
-    // Validate isActive
     if (typeof isActive !== "boolean") {
       return res.status(400).json({
         message:
@@ -552,13 +645,11 @@ const updateProductStatus = async (
 
     res.status(200).json({
       success: true,
-
       message: `Product ${
         isActive
           ? "activated"
           : "deactivated"
       } successfully`,
-
       product,
     });
   } catch (error) {
@@ -577,6 +668,7 @@ const updateProductStatus = async (
 
 // ======================================================
 // Delete Product
+// Seller / Admin
 // ======================================================
 
 const deleteProduct = async (req, res) => {
@@ -621,6 +713,7 @@ const deleteProduct = async (req, res) => {
     await product.deleteOne();
 
     res.status(200).json({
+      success: true,
       message:
         "Product deleted successfully",
     });
@@ -645,6 +738,7 @@ module.exports = {
   createProduct,
   getProducts,
   getAllProductsForAdmin,
+  getSellerProducts,
   getProductById,
   updateProduct,
   updateProductStatus,

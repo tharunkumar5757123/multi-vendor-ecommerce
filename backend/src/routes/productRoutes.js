@@ -6,6 +6,7 @@ const {
   createProduct,
   getProducts,
   getAllProductsForAdmin,
+  getSellerProducts,
   getProductById,
   updateProduct,
   updateProductStatus,
@@ -14,14 +15,22 @@ const {
 
 const protect = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
+
 const upload = require("../middleware/uploadMiddleware");
 
+// ======================================================
+// Customer - Get Active Products
+// ======================================================
 
-// Customer - Get active products
-router.get("/", getProducts);
+router.get(
+  "/",
+  getProducts
+);
 
+// ======================================================
+// Admin - Get All Products
+// ======================================================
 
-// Admin - Get all products
 router.get(
   "/admin/all",
   protect,
@@ -29,12 +38,32 @@ router.get(
   getAllProductsForAdmin
 );
 
+// ======================================================
+// Seller - Get My Products
+// IMPORTANT: Before /:id
+// ======================================================
 
-// Get single product
-router.get("/:id", getProductById);
+router.get(
+  "/seller/my-products",
+  protect,
+  authorizeRoles("seller"),
+  getSellerProducts
+);
 
+// ======================================================
+// Get Single Product
+// ======================================================
 
-// Create product
+router.get(
+  "/:id",
+  getProductById
+);
+
+// ======================================================
+// Create Product
+// Seller / Admin
+// ======================================================
+
 router.post(
   "/",
   protect,
@@ -43,8 +72,10 @@ router.post(
   createProduct
 );
 
-
+// ======================================================
 // Admin - Activate / Deactivate
+// ======================================================
+
 router.put(
   "/:id/status",
   protect,
@@ -52,8 +83,11 @@ router.put(
   updateProductStatus
 );
 
+// ======================================================
+// Update Product
+// Seller / Admin
+// ======================================================
 
-// Update product
 router.put(
   "/:id",
   protect,
@@ -62,14 +96,16 @@ router.put(
   updateProduct
 );
 
+// ======================================================
+// Delete Product
+// Seller / Admin
+// ======================================================
 
-// Delete product
 router.delete(
   "/:id",
   protect,
   authorizeRoles("seller", "admin"),
   deleteProduct
 );
-
 
 module.exports = router;
