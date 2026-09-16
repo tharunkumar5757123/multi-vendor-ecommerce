@@ -47,6 +47,8 @@ const createProduct = async (req, res) => {
       sku,
     } = req.body;
 
+    const parsedStock = Number(stock);
+
     // Required fields
     if (
       !name ||
@@ -54,6 +56,9 @@ const createProduct = async (req, res) => {
       price === undefined ||
       !category ||
       stock === undefined ||
+      String(stock).trim() === "" ||
+      !Number.isInteger(parsedStock) ||
+      parsedStock < 0 ||
       !sku
     ) {
       return res.status(400).json({
@@ -136,10 +141,7 @@ const createProduct = async (req, res) => {
       description: description.trim(),
       price: Number(price),
 
-      discountPrice:
-        discountPrice !== undefined
-          ? Number(discountPrice)
-          : 0,
+      discountPrice: discountPrice !== undefined ? Number(discountPrice) : 0,
 
       images,
 
@@ -149,7 +151,7 @@ const createProduct = async (req, res) => {
 
       seller: req.user._id,
 
-      stock: Number(stock),
+      stock: parsedStock,
 
       sku: sku.trim(),
     });
@@ -181,10 +183,7 @@ const createProduct = async (req, res) => {
           try {
             fs.unlinkSync(file.path);
           } catch (fileError) {
-            console.error(
-              "Local file cleanup error:",
-              fileError.message
-            );
+            console.error("Local file cleanup error:", fileError.message);
           }
         }
       }
@@ -295,8 +294,7 @@ const getProducts = async (req, res) => {
       };
     }
 
-    const totalProducts =
-      await Product.countDocuments(filter);
+    const totalProducts = await Product.countDocuments(filter);
 
     const products = await Product.find(filter)
       .populate("category", "name")
@@ -310,9 +308,7 @@ const getProducts = async (req, res) => {
       products,
       pagination: {
         currentPage,
-        totalPages: Math.ceil(
-          totalProducts / perPage
-        ),
+        totalPages: Math.ceil(totalProducts / perPage),
         totalProducts,
         perPage,
       },
@@ -344,10 +340,7 @@ const getAllProductsForAdmin = async (req, res) => {
       products,
     });
   } catch (error) {
-    console.error(
-      "Admin get products error:",
-      error
-    );
+    console.error("Admin get products error:", error);
 
     res.status(500).json({
       message: "Failed to fetch admin products",
@@ -374,10 +367,7 @@ const getSellerProducts = async (req, res) => {
       products,
     });
   } catch (error) {
-    console.error(
-      "Seller get products error:",
-      error
-    );
+    console.error("Seller get products error:", error);
 
     res.status(500).json({
       message: "Failed to fetch seller products",
@@ -392,9 +382,7 @@ const getSellerProducts = async (req, res) => {
 
 const getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(
-      req.params.id
-    )
+    const product = await Product.findById(req.params.id)
       .populate("category", "name")
       .populate("seller", "name email");
 
@@ -409,10 +397,7 @@ const getProductById = async (req, res) => {
       product,
     });
   } catch (error) {
-    console.error(
-      "Get single product error:",
-      error
-    );
+    console.error("Get single product error:", error);
 
     res.status(500).json({
       message: "Failed to fetch product",
@@ -428,9 +413,7 @@ const getProductById = async (req, res) => {
 
 const updateProduct = async (req, res) => {
   try {
-    const product = await Product.findById(
-      req.params.id
-    );
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({
@@ -444,12 +427,10 @@ const updateProduct = async (req, res) => {
 
     if (
       req.user.role === "seller" &&
-      product.seller.toString() !==
-        req.user._id.toString()
+      product.seller.toString() !== req.user._id.toString()
     ) {
       return res.status(403).json({
-        message:
-          "You can update only your own products",
+        message: "You can update only your own products",
       });
     }
 
@@ -465,16 +446,33 @@ const updateProduct = async (req, res) => {
       removeImages,
     } = req.body;
 
+    if (stock !== undefined) {
+      if (String(stock).trim() === "") {
+        return res.status(400).json({
+          message: "Stock is required",
+        });
+      }
+
+      const parsedStock = Number(stock);
+
+      if (!Number.isInteger(parsedStock) || parsedStock < 0) {
+        return res.status(400).json({
+          message: "Stock must be a non-negative integer",
+        });
+      }
+
+      product.stock = parsedStock;
+    }
+
     // ==================================================
     // Check Category
     // ==================================================
 
     if (category) {
-      const categoryExists =
-        await Category.findOne({
-          _id: category,
-          isActive: true,
-        });
+      const categoryExists = await Category.findOne({
+        _id: category,
+        isActive: true,
+      });
 
       if (!categoryExists) {
         return res.status(404).json({
@@ -489,17 +487,13 @@ const updateProduct = async (req, res) => {
     // Check SKU
     // ==================================================
 
-    if (
-      sku &&
-      sku.trim() !== product.sku
-    ) {
-      const existingSku =
-        await Product.findOne({
-          sku: sku.trim(),
-          _id: {
-            $ne: product._id,
-          },
-        });
+    if (sku && sku.trim() !== product.sku) {
+      const existingSku = await Product.findOne({
+        sku: sku.trim(),
+        _id: {
+          $ne: product._id,
+        },
+      });
 
       if (existingSku) {
         return res.status(400).json({
@@ -521,20 +515,15 @@ const updateProduct = async (req, res) => {
       imagesToRemove = [imagesToRemove];
     }
 
-    imagesToRemove = imagesToRemove.filter(
-      Boolean
-    );
+    imagesToRemove = imagesToRemove.filter(Boolean);
 
     const oldImages = (product.images || [])
       .map(normalizeProductImage)
       .filter(Boolean);
 
     // Find images that need to be deleted
-    const imagesToDelete = oldImages.filter(
-      (oldImage) =>
-        imagesToRemove.includes(
-          oldImage.publicId
-        )
+    const imagesToDelete = oldImages.filter((oldImage) =>
+      imagesToRemove.includes(oldImage.publicId),
     );
 
     // ==================================================
@@ -542,31 +531,22 @@ const updateProduct = async (req, res) => {
     // ==================================================
 
     const keptImages = oldImages.filter(
-      (oldImage) =>
-        !imagesToRemove.includes(
-          oldImage.publicId
-        )
+      (oldImage) => !imagesToRemove.includes(oldImage.publicId),
     );
 
-    const newImageCount =
-      req.files && req.files.length
-        ? req.files.length
-        : 0;
+    const newImageCount = req.files && req.files.length ? req.files.length : 0;
 
-    const finalImageCount =
-      keptImages.length + newImageCount;
+    const finalImageCount = keptImages.length + newImageCount;
 
     if (finalImageCount === 0) {
       return res.status(400).json({
-        message:
-          "Product must have at least one image",
+        message: "Product must have at least one image",
       });
     }
 
     if (finalImageCount > 5) {
       return res.status(400).json({
-        message:
-          "A product can have maximum 5 images",
+        message: "A product can have maximum 5 images",
       });
     }
 
@@ -577,13 +557,11 @@ const updateProduct = async (req, res) => {
     for (const image of imagesToDelete) {
       if (image.publicId) {
         try {
-          await deleteFromCloudinary(
-            image.publicId
-          );
+          await deleteFromCloudinary(image.publicId);
         } catch (cloudinaryError) {
           console.error(
             "Cloudinary image delete error:",
-            cloudinaryError.message
+            cloudinaryError.message,
           );
         }
       }
@@ -595,20 +573,11 @@ const updateProduct = async (req, res) => {
 
     const newImages = [];
 
-    if (
-      req.files &&
-      req.files.length > 0
-    ) {
+    if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        console.log(
-          "New product image:",
-          file.path
-        );
+        console.log("New product image:", file.path);
 
-        const result =
-          await uploadToCloudinary(
-            file.path
-          );
+        const result = await uploadToCloudinary(file.path);
 
         newImages.push({
           url: result.url,
@@ -616,10 +585,7 @@ const updateProduct = async (req, res) => {
         });
 
         // Remove local file
-        if (
-          file.path &&
-          fs.existsSync(file.path)
-        ) {
+        if (file.path && fs.existsSync(file.path)) {
           fs.unlinkSync(file.path);
         }
       }
@@ -629,9 +595,7 @@ const updateProduct = async (req, res) => {
     // Check Name Changed
     // ==================================================
 
-    const nameChanged =
-      name !== undefined &&
-      name.trim() !== product.name;
+    const nameChanged = name !== undefined && name.trim() !== product.name;
 
     // ==================================================
     // Update Fields
@@ -642,27 +606,19 @@ const updateProduct = async (req, res) => {
     }
 
     if (description !== undefined) {
-      product.description =
-        description.trim();
+      product.description = description.trim();
     }
 
     if (price !== undefined) {
       product.price = Number(price);
     }
 
-    if (
-      discountPrice !== undefined
-    ) {
-      product.discountPrice =
-        Number(discountPrice);
+    if (discountPrice !== undefined) {
+      product.discountPrice = Number(discountPrice);
     }
 
     if (brand !== undefined) {
       product.brand = brand.trim();
-    }
-
-    if (stock !== undefined) {
-      product.stock = Number(stock);
     }
 
     // ==================================================
@@ -670,19 +626,16 @@ const updateProduct = async (req, res) => {
     // ==================================================
 
     if (nameChanged || !product.slug) {
-      const slugSourceName =
-        name !== undefined ? name : product.name;
+      const slugSourceName = name !== undefined ? name : product.name;
 
-      let newSlug =
-        generateSlug(slugSourceName);
+      let newSlug = generateSlug(slugSourceName);
 
-      const existingSlug =
-        await Product.findOne({
-          slug: newSlug,
-          _id: {
-            $ne: product._id,
-          },
-        });
+      const existingSlug = await Product.findOne({
+        slug: newSlug,
+        _id: {
+          $ne: product._id,
+        },
+      });
 
       if (existingSlug) {
         newSlug = `${newSlug}-${Date.now()}`;
@@ -695,10 +648,7 @@ const updateProduct = async (req, res) => {
     // Update Images
     // ==================================================
 
-    product.images = [
-      ...keptImages,
-      ...newImages,
-    ];
+    product.images = [...keptImages, ...newImages];
 
     // ==================================================
     // Save Product
@@ -723,41 +673,27 @@ const updateProduct = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message:
-        "Product updated successfully",
+      message: "Product updated successfully",
       product,
     });
   } catch (error) {
-    console.error(
-      "Update product error:",
-      error
-    );
+    console.error("Update product error:", error);
 
     // Cleanup uploaded local files
-    if (
-      req.files &&
-      req.files.length > 0
-    ) {
+    if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        if (
-          file.path &&
-          fs.existsSync(file.path)
-        ) {
+        if (file.path && fs.existsSync(file.path)) {
           try {
             fs.unlinkSync(file.path);
           } catch (fileError) {
-            console.error(
-              "Local file cleanup error:",
-              fileError.message
-            );
+            console.error("Local file cleanup error:", fileError.message);
           }
         }
       }
     }
 
     res.status(500).json({
-      message:
-        "Failed to update product",
+      message: "Failed to update product",
       error: error.message,
     });
   }
@@ -767,36 +703,29 @@ const updateProduct = async (req, res) => {
 // Admin - Activate / Deactivate Product
 // ======================================================
 
-const updateProductStatus = async (
-  req,
-  res
-) => {
+const updateProductStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { isActive } = req.body;
 
-    if (
-      typeof isActive !== "boolean"
-    ) {
+    if (typeof isActive !== "boolean") {
       return res.status(400).json({
-        message:
-          "isActive must be true or false",
+        message: "isActive must be true or false",
       });
     }
 
-    const product =
-      await Product.findByIdAndUpdate(
-        id,
-        {
-          isActive,
-        },
-        {
-          returnDocument: "after",
-          runValidators: true,
-        }
-      )
-        .populate("category", "name")
-        .populate("seller", "name email");
+    const product = await Product.findByIdAndUpdate(
+      id,
+      {
+        isActive,
+      },
+      {
+        returnDocument: "after",
+        runValidators: true,
+      },
+    )
+      .populate("category", "name")
+      .populate("seller", "name email");
 
     if (!product) {
       return res.status(404).json({
@@ -806,22 +735,14 @@ const updateProductStatus = async (
 
     res.status(200).json({
       success: true,
-      message: `Product ${
-        isActive
-          ? "activated"
-          : "deactivated"
-      } successfully`,
+      message: `Product ${isActive ? "activated" : "deactivated"} successfully`,
       product,
     });
   } catch (error) {
-    console.error(
-      "Update product status error:",
-      error
-    );
+    console.error("Update product status error:", error);
 
     res.status(500).json({
-      message:
-        "Failed to update product status",
+      message: "Failed to update product status",
       error: error.message,
     });
   }
@@ -832,15 +753,9 @@ const updateProductStatus = async (
 // Seller / Admin
 // ======================================================
 
-const deleteProduct = async (
-  req,
-  res
-) => {
+const deleteProduct = async (req, res) => {
   try {
-    const product =
-      await Product.findById(
-        req.params.id
-      );
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({
@@ -851,12 +766,10 @@ const deleteProduct = async (
     // Seller can delete only own products
     if (
       req.user.role === "seller" &&
-      product.seller.toString() !==
-        req.user._id.toString()
+      product.seller.toString() !== req.user._id.toString()
     ) {
       return res.status(403).json({
-        message:
-          "You can delete only your own products",
+        message: "You can delete only your own products",
       });
     }
 
@@ -864,21 +777,13 @@ const deleteProduct = async (
     // Delete Images From Cloudinary
     // ==================================================
 
-    if (
-      product.images &&
-      product.images.length > 0
-    ) {
+    if (product.images && product.images.length > 0) {
       for (const image of product.images) {
         if (image.publicId) {
           try {
-            await deleteFromCloudinary(
-              image.publicId
-            );
+            await deleteFromCloudinary(image.publicId);
           } catch (cloudinaryError) {
-            console.error(
-              "Cloudinary delete error:",
-              cloudinaryError.message
-            );
+            console.error("Cloudinary delete error:", cloudinaryError.message);
           }
         }
       }
@@ -892,18 +797,13 @@ const deleteProduct = async (
 
     res.status(200).json({
       success: true,
-      message:
-        "Product deleted successfully",
+      message: "Product deleted successfully",
     });
   } catch (error) {
-    console.error(
-      "Delete product error:",
-      error
-    );
+    console.error("Delete product error:", error);
 
     res.status(500).json({
-      message:
-        "Failed to delete product",
+      message: "Failed to delete product",
       error: error.message,
     });
   }

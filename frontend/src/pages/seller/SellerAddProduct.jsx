@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -40,16 +39,12 @@ function SellerAddProduct() {
 
         setCategories(response.data.categories || []);
       } catch (error) {
-        console.error(
-          "FETCH CATEGORIES ERROR:",
-          error
-        );
+        console.error("FETCH CATEGORIES ERROR:", error);
 
         showToast(
           "error",
           "Categories unavailable",
-          error.response?.data?.message ||
-            "Failed to load categories"
+          error.response?.data?.message || "Failed to load categories",
         );
       } finally {
         setCategoryLoading(false);
@@ -80,9 +75,7 @@ function SellerAddProduct() {
   // Handle Images
   // ----------------------------------
   const handleImageChange = (event) => {
-    const selectedFiles = Array.from(
-      event.target.files || []
-    );
+    const selectedFiles = Array.from(event.target.files || []);
 
     if (selectedFiles.length === 0) {
       return;
@@ -92,7 +85,7 @@ function SellerAddProduct() {
       showToast(
         "warning",
         "Image limit reached",
-        "You can upload maximum 5 images."
+        "You can upload maximum 5 images.",
       );
 
       event.target.value = "";
@@ -100,29 +93,27 @@ function SellerAddProduct() {
     }
 
     const invalidFile = selectedFiles.find(
-      (file) => !file.type.startsWith("image/")
+      (file) => !file.type.startsWith("image/"),
     );
 
     if (invalidFile) {
       showToast(
         "warning",
         "Invalid file type",
-        "Only image files are allowed."
+        "Only image files are allowed.",
       );
 
       event.target.value = "";
       return;
     }
 
-    const largeFile = selectedFiles.find(
-      (file) => file.size > 5 * 1024 * 1024
-    );
+    const largeFile = selectedFiles.find((file) => file.size > 5 * 1024 * 1024);
 
     if (largeFile) {
       showToast(
         "warning",
         "File too large",
-        "Each image must be smaller than 5MB."
+        "Each image must be smaller than 5MB.",
       );
 
       event.target.value = "";
@@ -143,44 +134,35 @@ function SellerAddProduct() {
     }
 
     if (!formData.description.trim()) {
-      newErrors.description =
-        "Product description is required";
+      newErrors.description = "Product description is required";
     }
 
     if (!formData.price) {
       newErrors.price = "Price is required";
     } else if (Number(formData.price) <= 0) {
-      newErrors.price =
-        "Price must be greater than 0";
+      newErrors.price = "Price must be greater than 0";
+    }
+
+    if (formData.discountPrice && Number(formData.discountPrice) < 0) {
+      newErrors.discountPrice = "Discount price cannot be negative";
     }
 
     if (
       formData.discountPrice &&
-      Number(formData.discountPrice) < 0
-    ) {
-      newErrors.discountPrice =
-        "Discount price cannot be negative";
-    }
-
-    if (
-      formData.discountPrice &&
-      Number(formData.discountPrice) >=
-        Number(formData.price)
+      Number(formData.discountPrice) >= Number(formData.price)
     ) {
       newErrors.discountPrice =
         "Discount price must be less than regular price";
     }
 
     if (!formData.category) {
-      newErrors.category =
-        "Please select a category";
+      newErrors.category = "Please select a category";
     }
 
     if (formData.stock === "") {
       newErrors.stock = "Stock is required";
     } else if (Number(formData.stock) < 0) {
-      newErrors.stock =
-        "Stock cannot be negative";
+      newErrors.stock = "Stock cannot be negative";
     }
 
     if (!formData.sku.trim()) {
@@ -188,8 +170,7 @@ function SellerAddProduct() {
     }
 
     if (images.length === 0) {
-      newErrors.images =
-        "Please select at least one image";
+      newErrors.images = "Please select at least one image";
     }
 
     setErrors(newErrors);
@@ -221,47 +202,24 @@ function SellerAddProduct() {
       */
       const productData = new FormData();
 
-      productData.append(
-        "name",
-        formData.name.trim()
-      );
+      productData.append("name", formData.name.trim());
 
-      productData.append(
-        "description",
-        formData.description.trim()
-      );
+      productData.append("description", formData.description.trim());
 
-      productData.append(
-        "price",
-        Number(formData.price)
-      );
+      productData.append("price", Number(formData.price));
 
       productData.append(
         "discountPrice",
-        formData.discountPrice
-          ? Number(formData.discountPrice)
-          : 0
+        formData.discountPrice ? Number(formData.discountPrice) : 0,
       );
 
-      productData.append(
-        "brand",
-        formData.brand.trim()
-      );
+      productData.append("brand", formData.brand.trim());
 
-      productData.append(
-        "category",
-        formData.category
-      );
+      productData.append("category", formData.category);
 
-      productData.append(
-        "stock",
-        Number(formData.stock)
-      );
+      productData.append("stock", formData.stock);
 
-      productData.append(
-        "sku",
-        formData.sku.trim()
-      );
+      productData.append("sku", formData.sku.trim());
 
       /*
         Send every image using
@@ -271,36 +229,24 @@ function SellerAddProduct() {
         productData.append("images", image);
       });
 
-      const response = await api.post(
-        "/products",
-        productData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const response = await api.post("/products", productData, undefined);
 
       showToast(
         "success",
         "Product created",
-        response.data?.message ||
-          "Product created successfully"
+        response.data?.message || "Product created successfully",
       );
 
       navigate("/seller/products");
     } catch (error) {
-      console.error(
-        "CREATE PRODUCT ERROR:",
-        error
-      );
+      console.error("CREATE PRODUCT ERROR:", error);
 
       showToast(
         "error",
         "Product creation failed",
         error.response?.data?.message ||
           error.response?.data?.error ||
-          "Failed to create product"
+          "Failed to create product",
       );
     } finally {
       setLoading(false);
@@ -314,9 +260,7 @@ function SellerAddProduct() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Add Product
-              </h1>
+              <h1 className="text-2xl font-bold text-gray-900">Add Product</h1>
 
               <p className="text-sm text-gray-500 mt-1">
                 Add a new product to your store
@@ -325,9 +269,7 @@ function SellerAddProduct() {
 
             <button
               type="button"
-              onClick={() =>
-                navigate("/seller/products")
-              }
+              onClick={() => navigate("/seller/products")}
               className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100"
             >
               Back to Products
@@ -338,10 +280,7 @@ function SellerAddProduct() {
 
       {/* Form */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6"
-        >
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <section className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-800">
@@ -362,16 +301,12 @@ function SellerAddProduct() {
                   onChange={handleChange}
                   placeholder="Enter product name"
                   className={`w-full border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.name
-                      ? "border-red-500"
-                      : "border-gray-300"
+                    errors.name ? "border-red-500" : "border-gray-300"
                   }`}
                 />
 
                 {errors.name && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.name}
-                  </p>
+                  <p className="text-sm text-red-600 mt-1">{errors.name}</p>
                 )}
               </div>
 
@@ -388,9 +323,7 @@ function SellerAddProduct() {
                   rows="5"
                   placeholder="Describe your product..."
                   className={`w-full border rounded-lg px-4 py-3 outline-none resize-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.description
-                      ? "border-red-500"
-                      : "border-gray-300"
+                    errors.description ? "border-red-500" : "border-gray-300"
                   }`}
                 />
 
@@ -446,17 +379,13 @@ function SellerAddProduct() {
                     step="0.01"
                     placeholder="0.00"
                     className={`w-full border rounded-lg pl-9 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.price
-                        ? "border-red-500"
-                        : "border-gray-300"
+                      errors.price ? "border-red-500" : "border-gray-300"
                     }`}
                   />
                 </div>
 
                 {errors.price && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.price}
-                  </p>
+                  <p className="text-sm text-red-600 mt-1">{errors.price}</p>
                 )}
               </div>
 
@@ -509,16 +438,12 @@ function SellerAddProduct() {
                   step="1"
                   placeholder="Enter stock quantity"
                   className={`w-full border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.stock
-                      ? "border-red-500"
-                      : "border-gray-300"
+                    errors.stock ? "border-red-500" : "border-gray-300"
                   }`}
                 />
 
                 {errors.stock && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.stock}
-                  </p>
+                  <p className="text-sm text-red-600 mt-1">{errors.stock}</p>
                 )}
               </div>
 
@@ -535,16 +460,12 @@ function SellerAddProduct() {
                   onChange={handleChange}
                   placeholder="Example: ELEC-001"
                   className={`w-full border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.sku
-                      ? "border-red-500"
-                      : "border-gray-300"
+                    errors.sku ? "border-red-500" : "border-gray-300"
                   }`}
                 />
 
                 {errors.sku && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.sku}
-                  </p>
+                  <p className="text-sm text-red-600 mt-1">{errors.sku}</p>
                 )}
               </div>
             </div>
@@ -552,9 +473,7 @@ function SellerAddProduct() {
 
           {/* Category */}
           <section className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-800">
-              Category
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-800">Category</h2>
 
             <div className="mt-5">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -567,9 +486,7 @@ function SellerAddProduct() {
                 onChange={handleChange}
                 disabled={categoryLoading}
                 className={`w-full border rounded-lg px-4 py-2.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.category
-                    ? "border-red-500"
-                    : "border-gray-300"
+                  errors.category ? "border-red-500" : "border-gray-300"
                 }`}
               >
                 <option value="">
@@ -579,28 +496,21 @@ function SellerAddProduct() {
                 </option>
 
                 {categories.map((category) => (
-                  <option
-                    key={category._id}
-                    value={category._id}
-                  >
+                  <option key={category._id} value={category._id}>
                     {category.name}
                   </option>
                 ))}
               </select>
 
               {errors.category && (
-                <p className="text-sm text-red-600 mt-1">
-                  {errors.category}
-                </p>
+                <p className="text-sm text-red-600 mt-1">{errors.category}</p>
               )}
 
-              {!categoryLoading &&
-                categories.length === 0 && (
-                  <p className="text-sm text-orange-600 mt-2">
-                    No categories available. Please
-                    create a category first.
-                  </p>
-                )}
+              {!categoryLoading && categories.length === 0 && (
+                <p className="text-sm text-orange-600 mt-2">
+                  No categories available. Please create a category first.
+                </p>
+              )}
             </div>
           </section>
 
@@ -611,8 +521,7 @@ function SellerAddProduct() {
             </h2>
 
             <p className="text-sm text-gray-500 mt-1">
-              Upload up to 5 images. Maximum 5MB per
-              image.
+              Upload up to 5 images. Maximum 5MB per image.
             </p>
 
             <div className="mt-5">
@@ -620,17 +529,13 @@ function SellerAddProduct() {
                 htmlFor="product-images"
                 className="block border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition"
               >
-                <div className="text-4xl">
-                  📷
-                </div>
+                <div className="text-4xl">📷</div>
 
                 <p className="font-medium text-gray-700 mt-3">
                   Click to select images
                 </p>
 
-                <p className="text-sm text-gray-400 mt-1">
-                  JPG, PNG, WEBP
-                </p>
+                <p className="text-sm text-gray-400 mt-1">JPG, PNG, WEBP</p>
               </label>
 
               <input
@@ -643,9 +548,7 @@ function SellerAddProduct() {
               />
 
               {errors.images && (
-                <p className="text-sm text-red-600 mt-2">
-                  {errors.images}
-                </p>
+                <p className="text-sm text-red-600 mt-2">{errors.images}</p>
               )}
             </div>
 
@@ -658,14 +561,9 @@ function SellerAddProduct() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                   {images.map((image, index) => (
-                    <div
-                      key={`${image.name}-${index}`}
-                      className="relative"
-                    >
+                    <div key={`${image.name}-${index}`} className="relative">
                       <img
-                        src={URL.createObjectURL(
-                          image
-                        )}
+                        src={URL.createObjectURL(image)}
                         alt={`Preview ${index + 1}`}
                         className="w-full h-28 object-cover rounded-lg border"
                       />
@@ -685,9 +583,7 @@ function SellerAddProduct() {
             <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
               <button
                 type="button"
-                onClick={() =>
-                  navigate("/seller/products")
-                }
+                onClick={() => navigate("/seller/products")}
                 disabled={loading}
                 className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 disabled:opacity-50"
               >
@@ -699,9 +595,7 @@ function SellerAddProduct() {
                 disabled={loading}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading
-                  ? "Creating Product..."
-                  : "Create Product"}
+                {loading ? "Creating Product..." : "Create Product"}
               </button>
             </div>
           </section>

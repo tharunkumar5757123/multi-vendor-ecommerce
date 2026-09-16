@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -39,47 +38,34 @@ function SellerEditProduct() {
       try {
         setLoading(true);
 
-        const [productResponse, categoryResponse] =
-          await Promise.all([
-            api.get(`/products/${id}`),
-            api.get("/categories"),
-          ]);
+        const [productResponse, categoryResponse] = await Promise.all([
+          api.get(`/products/${id}`),
+          api.get("/categories"),
+        ]);
 
-        const loadedProduct =
-          productResponse.data.product;
+        const loadedProduct = productResponse.data.product;
 
         setProduct(loadedProduct);
 
         setFormData({
           name: loadedProduct.name || "",
-          description:
-            loadedProduct.description || "",
+          description: loadedProduct.description || "",
           price: loadedProduct.price ?? "",
-          discountPrice:
-            loadedProduct.discountPrice ?? "",
+          discountPrice: loadedProduct.discountPrice ?? "",
           brand: loadedProduct.brand || "",
-          category:
-            loadedProduct.category?._id ||
-            loadedProduct.category ||
-            "",
+          category: loadedProduct.category?._id || loadedProduct.category || "",
           stock: loadedProduct.stock ?? "",
           sku: loadedProduct.sku || "",
         });
 
-        setCategories(
-          categoryResponse.data.categories || []
-        );
+        setCategories(categoryResponse.data.categories || []);
       } catch (error) {
-        console.error(
-          "LOAD EDIT PRODUCT ERROR:",
-          error
-        );
+        console.error("LOAD EDIT PRODUCT ERROR:", error);
 
         showToast(
           "error",
           "Product unavailable",
-          error.response?.data?.message ||
-            "Failed to load product"
+          error.response?.data?.message || "Failed to load product",
         );
 
         navigate("/seller/products");
@@ -112,9 +98,7 @@ function SellerEditProduct() {
   // Select New Images
   // ----------------------------------
   const handleImageChange = (event) => {
-    const selectedFiles = Array.from(
-      event.target.files || []
-    );
+    const selectedFiles = Array.from(event.target.files || []);
 
     if (selectedFiles.length === 0) {
       return;
@@ -124,35 +108,33 @@ function SellerEditProduct() {
       showToast(
         "warning",
         "Image limit reached",
-        "You can select maximum 5 new images."
+        "You can select maximum 5 new images.",
       );
       event.target.value = "";
       return;
     }
 
     const invalidFile = selectedFiles.find(
-      (file) => !file.type.startsWith("image/")
+      (file) => !file.type.startsWith("image/"),
     );
 
     if (invalidFile) {
       showToast(
         "warning",
         "Invalid file type",
-        "Only image files are allowed."
+        "Only image files are allowed.",
       );
       event.target.value = "";
       return;
     }
 
-    const largeFile = selectedFiles.find(
-      (file) => file.size > 5 * 1024 * 1024
-    );
+    const largeFile = selectedFiles.find((file) => file.size > 5 * 1024 * 1024);
 
     if (largeFile) {
       showToast(
         "warning",
         "File too large",
-        "Each image must be smaller than 5MB."
+        "Each image must be smaller than 5MB.",
       );
       event.target.value = "";
       return;
@@ -165,10 +147,7 @@ function SellerEditProduct() {
   // Remove Existing Image
   // ----------------------------------
   const handleRemoveExistingImage = (image) => {
-    const publicId =
-      typeof image === "string"
-        ? ""
-        : image?.publicId || "";
+    const publicId = typeof image === "string" ? "" : image?.publicId || "";
 
     if (!publicId) {
       return;
@@ -187,9 +166,7 @@ function SellerEditProduct() {
   // Restore Existing Image
   // ----------------------------------
   const handleRestoreExistingImage = (publicId) => {
-    setRemoveImages((previous) =>
-      previous.filter((id) => id !== publicId)
-    );
+    setRemoveImages((previous) => previous.filter((id) => id !== publicId));
   };
 
   // ----------------------------------
@@ -203,44 +180,35 @@ function SellerEditProduct() {
     }
 
     if (!formData.description.trim()) {
-      newErrors.description =
-        "Product description is required";
+      newErrors.description = "Product description is required";
     }
 
     if (!formData.price) {
       newErrors.price = "Price is required";
     } else if (Number(formData.price) <= 0) {
-      newErrors.price =
-        "Price must be greater than 0";
+      newErrors.price = "Price must be greater than 0";
+    }
+
+    if (formData.discountPrice && Number(formData.discountPrice) < 0) {
+      newErrors.discountPrice = "Discount price cannot be negative";
     }
 
     if (
       formData.discountPrice &&
-      Number(formData.discountPrice) < 0
-    ) {
-      newErrors.discountPrice =
-        "Discount price cannot be negative";
-    }
-
-    if (
-      formData.discountPrice &&
-      Number(formData.discountPrice) >=
-        Number(formData.price)
+      Number(formData.discountPrice) >= Number(formData.price)
     ) {
       newErrors.discountPrice =
         "Discount price must be less than regular price";
     }
 
     if (!formData.category) {
-      newErrors.category =
-        "Please select a category";
+      newErrors.category = "Please select a category";
     }
 
     if (formData.stock === "") {
       newErrors.stock = "Stock is required";
     } else if (Number(formData.stock) < 0) {
-      newErrors.stock =
-        "Stock cannot be negative";
+      newErrors.stock = "Stock cannot be negative";
     }
 
     if (!formData.sku.trim()) {
@@ -272,57 +240,31 @@ function SellerEditProduct() {
 
       const productData = new FormData();
 
-      productData.append(
-        "name",
-        formData.name.trim()
-      );
+      productData.append("name", formData.name.trim());
 
-      productData.append(
-        "description",
-        formData.description.trim()
-      );
+      productData.append("description", formData.description.trim());
 
-      productData.append(
-        "price",
-        Number(formData.price)
-      );
+      productData.append("price", Number(formData.price));
 
       productData.append(
         "discountPrice",
-        formData.discountPrice
-          ? Number(formData.discountPrice)
-          : 0
+        formData.discountPrice ? Number(formData.discountPrice) : 0,
       );
 
-      productData.append(
-        "brand",
-        formData.brand.trim()
-      );
+      productData.append("brand", formData.brand.trim());
 
-      productData.append(
-        "category",
-        formData.category
-      );
+      productData.append("category", formData.category);
 
-      productData.append(
-        "stock",
-        Number(formData.stock)
-      );
+      productData.append("stock", formData.stock);
 
-      productData.append(
-        "sku",
-        formData.sku.trim()
-      );
+      productData.append("sku", formData.sku.trim());
 
       /*
         Send public IDs of images
         that should be removed.
       */
       removeImages.forEach((publicId) => {
-        productData.append(
-          "removeImages",
-          publicId
-        );
+        productData.append("removeImages", publicId);
       });
 
       /*
@@ -332,36 +274,24 @@ function SellerEditProduct() {
         productData.append("images", image);
       });
 
-      const response = await api.put(
-        `/products/${id}`,
-        productData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const response = await api.put(`/products/${id}`, productData, undefined);
 
       showToast(
         "success",
         "Product updated",
-        response.data?.message ||
-          "Product updated successfully"
+        response.data?.message || "Product updated successfully",
       );
 
       navigate("/seller/products");
     } catch (error) {
-      console.error(
-        "UPDATE PRODUCT ERROR:",
-        error
-      );
+      console.error("UPDATE PRODUCT ERROR:", error);
 
       showToast(
         "error",
         "Product update failed",
         error.response?.data?.message ||
           error.response?.data?.error ||
-          "Failed to update product"
+          "Failed to update product",
       );
     } finally {
       setSaving(false);
@@ -377,9 +307,7 @@ function SellerEditProduct() {
         <div className="text-center">
           <div className="inline-block w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
 
-          <p className="mt-4 text-gray-500">
-            Loading product...
-          </p>
+          <p className="mt-4 text-gray-500">Loading product...</p>
         </div>
       </div>
     );
@@ -392,25 +320,16 @@ function SellerEditProduct() {
   const existingImages = product.images || [];
 
   const getExistingImagePublicId = (image) =>
-    typeof image === "string"
-      ? ""
-      : image?.publicId || "";
+    typeof image === "string" ? "" : image?.publicId || "";
 
   const getExistingImageUrl = (image) =>
-    typeof image === "string"
-      ? image
-      : image?.url || "";
+    typeof image === "string" ? image : image?.url || "";
 
-  const visibleExistingImages =
-    existingImages.filter((image) => {
-      const publicId =
-        getExistingImagePublicId(image);
+  const visibleExistingImages = existingImages.filter((image) => {
+    const publicId = getExistingImagePublicId(image);
 
-      return (
-        !publicId ||
-        !removeImages.includes(publicId)
-      );
-    });
+    return !publicId || !removeImages.includes(publicId);
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -419,9 +338,7 @@ function SellerEditProduct() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Edit Product
-              </h1>
+              <h1 className="text-2xl font-bold text-gray-900">Edit Product</h1>
 
               <p className="text-sm text-gray-500 mt-1">
                 Update your product information
@@ -430,9 +347,7 @@ function SellerEditProduct() {
 
             <button
               type="button"
-              onClick={() =>
-                navigate("/seller/products")
-              }
+              onClick={() => navigate("/seller/products")}
               disabled={saving}
               className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 disabled:opacity-50"
             >
@@ -443,10 +358,7 @@ function SellerEditProduct() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6"
-        >
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <section className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-800">
@@ -466,16 +378,12 @@ function SellerEditProduct() {
                   value={formData.name}
                   onChange={handleChange}
                   className={`w-full border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.name
-                      ? "border-red-500"
-                      : "border-gray-300"
+                    errors.name ? "border-red-500" : "border-gray-300"
                   }`}
                 />
 
                 {errors.name && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.name}
-                  </p>
+                  <p className="text-sm text-red-600 mt-1">{errors.name}</p>
                 )}
               </div>
 
@@ -491,9 +399,7 @@ function SellerEditProduct() {
                   onChange={handleChange}
                   rows="5"
                   className={`w-full border rounded-lg px-4 py-3 outline-none resize-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.description
-                      ? "border-red-500"
-                      : "border-gray-300"
+                    errors.description ? "border-red-500" : "border-gray-300"
                   }`}
                 />
 
@@ -548,17 +454,13 @@ function SellerEditProduct() {
                     min="0"
                     step="0.01"
                     className={`w-full border rounded-lg pl-9 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.price
-                        ? "border-red-500"
-                        : "border-gray-300"
+                      errors.price ? "border-red-500" : "border-gray-300"
                     }`}
                   />
                 </div>
 
                 {errors.price && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.price}
-                  </p>
+                  <p className="text-sm text-red-600 mt-1">{errors.price}</p>
                 )}
               </div>
 
@@ -610,16 +512,12 @@ function SellerEditProduct() {
                   min="0"
                   step="1"
                   className={`w-full border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.stock
-                      ? "border-red-500"
-                      : "border-gray-300"
+                    errors.stock ? "border-red-500" : "border-gray-300"
                   }`}
                 />
 
                 {errors.stock && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.stock}
-                  </p>
+                  <p className="text-sm text-red-600 mt-1">{errors.stock}</p>
                 )}
               </div>
 
@@ -635,16 +533,12 @@ function SellerEditProduct() {
                   value={formData.sku}
                   onChange={handleChange}
                   className={`w-full border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.sku
-                      ? "border-red-500"
-                      : "border-gray-300"
+                    errors.sku ? "border-red-500" : "border-gray-300"
                   }`}
                 />
 
                 {errors.sku && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.sku}
-                  </p>
+                  <p className="text-sm text-red-600 mt-1">{errors.sku}</p>
                 )}
               </div>
             </div>
@@ -652,9 +546,7 @@ function SellerEditProduct() {
 
           {/* Category */}
           <section className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-800">
-              Category
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-800">Category</h2>
 
             <div className="mt-5">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -666,29 +558,20 @@ function SellerEditProduct() {
                 value={formData.category}
                 onChange={handleChange}
                 className={`w-full border rounded-lg px-4 py-2.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.category
-                    ? "border-red-500"
-                    : "border-gray-300"
+                  errors.category ? "border-red-500" : "border-gray-300"
                 }`}
               >
-                <option value="">
-                  Select category
-                </option>
+                <option value="">Select category</option>
 
                 {categories.map((category) => (
-                  <option
-                    key={category._id}
-                    value={category._id}
-                  >
+                  <option key={category._id} value={category._id}>
                     {category.name}
                   </option>
                 ))}
               </select>
 
               {errors.category && (
-                <p className="text-sm text-red-600 mt-1">
-                  {errors.category}
-                </p>
+                <p className="text-sm text-red-600 mt-1">{errors.category}</p>
               )}
             </div>
           </section>
@@ -710,69 +593,46 @@ function SellerEditProduct() {
                 </p>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                  {existingImages.map(
-                    (image, index) => {
-                      const imageUrl =
-                        getExistingImageUrl(image);
-                      const publicId =
-                        getExistingImagePublicId(
-                          image
-                        );
-                      const isRemoved =
-                        publicId &&
-                        removeImages.includes(publicId);
+                  {existingImages.map((image, index) => {
+                    const imageUrl = getExistingImageUrl(image);
+                    const publicId = getExistingImagePublicId(image);
+                    const isRemoved =
+                      publicId && removeImages.includes(publicId);
 
-                      return (
-                        <div
-                          key={
-                            publicId ||
-                            imageUrl ||
-                            index
-                          }
-                          className="relative"
-                        >
-                          <img
-                            src={imageUrl}
-                            alt={`${formData.name} ${
-                              index + 1
-                            }`}
-                            className={`w-full h-28 object-cover rounded-lg border ${
-                              isRemoved
-                                ? "opacity-30"
-                                : ""
-                            }`}
-                          />
+                    return (
+                      <div
+                        key={publicId || imageUrl || index}
+                        className="relative"
+                      >
+                        <img
+                          src={imageUrl}
+                          alt={`${formData.name} ${index + 1}`}
+                          className={`w-full h-28 object-cover rounded-lg border ${
+                            isRemoved ? "opacity-30" : ""
+                          }`}
+                        />
 
-                          {isRemoved ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleRestoreExistingImage(
-                                  publicId
-                                )
-                              }
-                              className="absolute inset-0 m-auto w-fit h-fit px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg"
-                            >
-                              Restore
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleRemoveExistingImage(
-                                  image
-                                )
-                              }
-                              disabled={!publicId}
-                              className="absolute top-2 right-2 w-7 h-7 bg-red-600 text-white rounded-full flex items-center justify-center hover:bg-red-700"
-                            >
-                              ×
-                            </button>
-                          )}
-                        </div>
-                      );
-                    }
-                  )}
+                        {isRemoved ? (
+                          <button
+                            type="button"
+                            onClick={() => handleRestoreExistingImage(publicId)}
+                            className="absolute inset-0 m-auto w-fit h-fit px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg"
+                          >
+                            Restore
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExistingImage(image)}
+                            disabled={!publicId}
+                            className="absolute top-2 right-2 w-7 h-7 bg-red-600 text-white rounded-full flex items-center justify-center hover:bg-red-700"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -804,16 +664,10 @@ function SellerEditProduct() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                   {newImages.map((image, index) => (
-                    <div
-                      key={`${image.name}-${index}`}
-                    >
+                    <div key={`${image.name}-${index}`}>
                       <img
-                        src={URL.createObjectURL(
-                          image
-                        )}
-                        alt={`New image ${
-                          index + 1
-                        }`}
+                        src={URL.createObjectURL(image)}
+                        alt={`New image ${index + 1}`}
                         className="w-full h-28 object-cover rounded-lg border"
                       />
                     </div>
@@ -822,13 +676,11 @@ function SellerEditProduct() {
               </div>
             )}
 
-            {visibleExistingImages.length === 0 &&
-              newImages.length === 0 && (
-                <p className="text-sm text-orange-600 mt-4">
-                  Warning: this product currently has
-                  no visible images.
-                </p>
-              )}
+            {visibleExistingImages.length === 0 && newImages.length === 0 && (
+              <p className="text-sm text-orange-600 mt-4">
+                Warning: this product currently has no visible images.
+              </p>
+            )}
           </section>
 
           {/* Submit */}
@@ -836,9 +688,7 @@ function SellerEditProduct() {
             <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
               <button
                 type="button"
-                onClick={() =>
-                  navigate("/seller/products")
-                }
+                onClick={() => navigate("/seller/products")}
                 disabled={saving}
                 className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 disabled:opacity-50"
               >
@@ -850,9 +700,7 @@ function SellerEditProduct() {
                 disabled={saving}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving
-                  ? "Saving Changes..."
-                  : "Update Product"}
+                {saving ? "Saving Changes..." : "Update Product"}
               </button>
             </div>
           </section>
