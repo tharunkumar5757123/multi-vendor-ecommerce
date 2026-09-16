@@ -34,7 +34,7 @@ function Products() {
   );
 
   const [sort, setSort] = useState(
-    searchParams.get("sort") || "-createdAt"
+    searchParams.get("sort") || "newest"
   );
 
   const [page, setPage] = useState(
@@ -45,16 +45,21 @@ function Products() {
     currentPage: 1,
     totalPages: 1,
     totalProducts: 0,
+    perPage: 12,
   });
 
-  // Fetch categories
+  // =========================
+  // FETCH CATEGORIES
+  // =========================
   const fetchCategories = async () => {
     try {
       setCategoryLoading(true);
 
       const response = await api.get("/categories");
 
-      setCategories(response.data.categories || response.data || []);
+      setCategories(
+        response.data.categories || response.data || []
+      );
     } catch (error) {
       console.error("Category fetch error:", error);
       setCategories([]);
@@ -63,7 +68,9 @@ function Products() {
     }
   };
 
-  // Fetch products
+  // =========================
+  // FETCH PRODUCTS
+  // =========================
   const fetchProducts = async () => {
     try {
       setLoading(true);
@@ -79,14 +86,22 @@ function Products() {
         params.append("category", category);
       }
 
-      if (minPrice) {
+      if (minPrice !== "") {
         params.append("minPrice", minPrice);
       }
 
-      if (maxPrice) {
+      if (maxPrice !== "") {
         params.append("maxPrice", maxPrice);
       }
 
+      // Backend expects:
+      // newest
+      // oldest
+      // priceLow
+      // priceHigh
+      // rating
+      // nameAZ
+      // nameZA
       if (sort) {
         params.append("sort", sort);
       }
@@ -103,12 +118,18 @@ function Products() {
       setProducts(data.products || []);
 
       if (data.pagination) {
-        setPagination(data.pagination);
+        setPagination({
+          currentPage: data.pagination.currentPage || page,
+          totalPages: data.pagination.totalPages || 1,
+          totalProducts: data.pagination.totalProducts || 0,
+          perPage: data.pagination.perPage || 12,
+        });
       } else {
         setPagination({
           currentPage: page,
           totalPages: 1,
           totalProducts: data.products?.length || 0,
+          perPage: 12,
         });
       }
     } catch (error) {
@@ -125,24 +146,51 @@ function Products() {
     }
   };
 
+  // =========================
+  // INITIAL CATEGORY LOAD
+  // =========================
   useEffect(() => {
     fetchCategories();
   }, []);
 
+  // =========================
+  // PRODUCT LOAD
+  // =========================
   useEffect(() => {
     fetchProducts();
-  }, [search, category, minPrice, maxPrice, sort, page]);
+  }, [
+    search,
+    category,
+    minPrice,
+    maxPrice,
+    sort,
+    page,
+  ]);
 
-  // Update URL
+  // =========================
+  // UPDATE URL
+  // =========================
   useEffect(() => {
     const params = {};
 
-    if (search.trim()) params.search = search.trim();
-    if (category) params.category = category;
-    if (minPrice) params.minPrice = minPrice;
-    if (maxPrice) params.maxPrice = maxPrice;
+    if (search.trim()) {
+      params.search = search.trim();
+    }
 
-    if (sort && sort !== "-createdAt") {
+    if (category) {
+      params.category = category;
+    }
+
+    if (minPrice !== "") {
+      params.minPrice = minPrice;
+    }
+
+    if (maxPrice !== "") {
+      params.maxPrice = maxPrice;
+    }
+
+    // newest is default
+    if (sort && sort !== "newest") {
       params.sort = sort;
     }
 
@@ -150,7 +198,9 @@ function Products() {
       params.page = page;
     }
 
-    setSearchParams(params, { replace: true });
+    setSearchParams(params, {
+      replace: true,
+    });
   }, [
     search,
     category,
@@ -161,46 +211,61 @@ function Products() {
     setSearchParams,
   ]);
 
-  // Search
+  // =========================
+  // SEARCH
+  // =========================
   const handleSearch = (e) => {
     setSearch(e.target.value);
     setPage(1);
   };
 
-  // Category
+  // =========================
+  // CATEGORY
+  // =========================
   const handleCategoryChange = (e) => {
     setCategory(e.target.value);
     setPage(1);
   };
 
-  // Sort
+  // =========================
+  // SORT
+  // =========================
   const handleSortChange = (e) => {
     setSort(e.target.value);
     setPage(1);
   };
 
-  // Price
+  // =========================
+  // MIN PRICE
+  // =========================
   const handleMinPriceChange = (e) => {
     setMinPrice(e.target.value);
     setPage(1);
   };
 
+  // =========================
+  // MAX PRICE
+  // =========================
   const handleMaxPriceChange = (e) => {
     setMaxPrice(e.target.value);
     setPage(1);
   };
 
-  // Clear filters
+  // =========================
+  // CLEAR FILTERS
+  // =========================
   const handleClearFilters = () => {
     setSearch("");
     setCategory("");
     setMinPrice("");
     setMaxPrice("");
-    setSort("-createdAt");
+    setSort("newest");
     setPage(1);
   };
 
-  // Pagination
+  // =========================
+  // PAGINATION
+  // =========================
   const handlePrevious = () => {
     if (page > 1) {
       setPage((previous) => previous - 1);
@@ -218,7 +283,9 @@ function Products() {
       <Navbar />
 
       <main className="min-h-screen bg-gray-50">
-        {/* Page Header */}
+        {/* =========================
+            PAGE HEADER
+        ========================= */}
         <section className="bg-gray-900 px-4 py-12 text-white">
           <div className="mx-auto max-w-7xl">
             <p className="mb-2 text-sm font-medium text-indigo-300">
@@ -237,7 +304,9 @@ function Products() {
         </section>
 
         <section className="mx-auto max-w-7xl px-4 py-8">
-          {/* Filters */}
+          {/* =========================
+              FILTERS
+          ========================= */}
           <div className="mb-8 rounded-2xl bg-white p-5 shadow-sm">
             <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <h2 className="text-xl font-bold text-gray-900">
@@ -253,7 +322,7 @@ function Products() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {/* Search */}
+              {/* SEARCH */}
               <div className="lg:col-span-2">
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Search
@@ -268,7 +337,7 @@ function Products() {
                 />
               </div>
 
-              {/* Category */}
+              {/* CATEGORY */}
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Category
@@ -280,7 +349,9 @@ function Products() {
                   disabled={categoryLoading}
                   className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 outline-none focus:border-indigo-500"
                 >
-                  <option value="">All Categories</option>
+                  <option value="">
+                    All Categories
+                  </option>
 
                   {categories.map((item) => (
                     <option
@@ -293,7 +364,7 @@ function Products() {
                 </select>
               </div>
 
-              {/* Sort */}
+              {/* SORT */}
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Sort By
@@ -304,29 +375,37 @@ function Products() {
                   onChange={handleSortChange}
                   className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 outline-none focus:border-indigo-500"
                 >
-                  <option value="-createdAt">
+                  <option value="newest">
                     Newest
                   </option>
 
-                  <option value="price">
+                  <option value="oldest">
+                    Oldest
+                  </option>
+
+                  <option value="priceLow">
                     Price: Low to High
                   </option>
 
-                  <option value="-price">
+                  <option value="priceHigh">
                     Price: High to Low
                   </option>
 
-                  <option value="name">
-                    Name: A to Z
+                  <option value="rating">
+                    Highest Rated
                   </option>
 
-                  <option value="-rating">
-                    Highest Rated
+                  <option value="nameAZ">
+                    Name: A-Z
+                  </option>
+
+                  <option value="nameZA">
+                    Name: Z-A
                   </option>
                 </select>
               </div>
 
-              {/* Minimum Price */}
+              {/* MINIMUM PRICE */}
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Minimum Price
@@ -342,7 +421,7 @@ function Products() {
                 />
               </div>
 
-              {/* Maximum Price */}
+              {/* MAXIMUM PRICE */}
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Maximum Price
@@ -360,7 +439,9 @@ function Products() {
             </div>
           </div>
 
-          {/* Results Header */}
+          {/* =========================
+              RESULTS HEADER
+          ========================= */}
           <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">
@@ -369,27 +450,32 @@ function Products() {
 
               {!loading && (
                 <p className="text-sm text-gray-500">
-                  {pagination.totalProducts || products.length}{" "}
+                  {pagination.totalProducts ||
+                    products.length}{" "}
                   products found
                 </p>
               )}
             </div>
 
-            {page > 1 && (
+            {pagination.totalPages > 1 && (
               <span className="text-sm text-gray-500">
                 Page {page} of {pagination.totalPages}
               </span>
             )}
           </div>
 
-          {/* Loading */}
+          {/* =========================
+              LOADING
+          ========================= */}
           {loading && (
             <div className="flex min-h-[300px] items-center justify-center">
               <Loader />
             </div>
           )}
 
-          {/* Error */}
+          {/* =========================
+              ERROR
+          ========================= */}
           {!loading && error && (
             <div className="rounded-xl bg-red-50 p-6 text-center">
               <p className="font-semibold text-red-600">
@@ -405,29 +491,37 @@ function Products() {
             </div>
           )}
 
-          {/* Empty */}
-          {!loading && !error && products.length === 0 && (
-            <div className="rounded-2xl bg-white px-6 py-16 text-center shadow-sm">
-              <div className="mb-4 text-5xl">🔍</div>
+          {/* =========================
+              EMPTY
+          ========================= */}
+          {!loading &&
+            !error &&
+            products.length === 0 && (
+              <div className="rounded-2xl bg-white px-6 py-16 text-center shadow-sm">
+                <div className="mb-4 text-5xl">
+                  🔍
+                </div>
 
-              <h3 className="mb-2 text-xl font-bold text-gray-900">
-                No Products Found
-              </h3>
+                <h3 className="mb-2 text-xl font-bold text-gray-900">
+                  No Products Found
+                </h3>
 
-              <p className="mb-6 text-gray-500">
-                Try changing your search or filters.
-              </p>
+                <p className="mb-6 text-gray-500">
+                  Try changing your search or filters.
+                </p>
 
-              <button
-                onClick={handleClearFilters}
-                className="rounded-lg bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-700"
-              >
-                Clear Filters
-              </button>
-            </div>
-          )}
+                <button
+                  onClick={handleClearFilters}
+                  className="rounded-lg bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-700"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            )}
 
-          {/* Product Grid */}
+          {/* =========================
+              PRODUCT GRID
+          ========================= */}
           {!loading &&
             !error &&
             products.length > 0 && (
@@ -441,7 +535,9 @@ function Products() {
               </div>
             )}
 
-          {/* Pagination */}
+          {/* =========================
+              PAGINATION
+          ========================= */}
           {!loading &&
             !error &&
             products.length > 0 &&
@@ -461,7 +557,9 @@ function Products() {
 
                 <button
                   onClick={handleNext}
-                  disabled={page >= pagination.totalPages}
+                  disabled={
+                    page >= pagination.totalPages
+                  }
                   className="rounded-lg border border-gray-300 bg-white px-5 py-2 font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Next →

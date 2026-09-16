@@ -217,84 +217,163 @@ const getProducts = async (req, res) => {
       isActive: true,
     };
 
+    // ==================================================
     // Search
-    if (search) {
+    // ==================================================
+
+    if (search && search.trim()) {
       filter.$or = [
         {
           name: {
-            $regex: search,
+            $regex: search.trim(),
             $options: "i",
           },
         },
         {
           description: {
-            $regex: search,
+            $regex: search.trim(),
             $options: "i",
           },
         },
         {
           brand: {
-            $regex: search,
+            $regex: search.trim(),
             $options: "i",
           },
         },
       ];
     }
 
+    // ==================================================
     // Category
-    if (category) {
+    // ==================================================
+
+    if (category && category.trim()) {
       filter.category = category;
     }
 
-    // Price
-    if (minPrice || maxPrice) {
-      filter.price = {};
+    // ==================================================
+    // Price Filter
+    // ==================================================
 
-      if (minPrice) {
-        filter.price.$gte = Number(minPrice);
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      filter.discountPrice = {};
+
+      if (
+        minPrice !== undefined &&
+        minPrice !== "" &&
+        !Number.isNaN(Number(minPrice))
+      ) {
+        filter.discountPrice.$gte = Number(minPrice);
       }
 
-      if (maxPrice) {
-        filter.price.$lte = Number(maxPrice);
+      if (
+        maxPrice !== undefined &&
+        maxPrice !== "" &&
+        !Number.isNaN(Number(maxPrice))
+      ) {
+        filter.discountPrice.$lte = Number(maxPrice);
+      }
+
+      // Remove empty price object
+      if (Object.keys(filter.discountPrice).length === 0) {
+        delete filter.discountPrice;
       }
     }
 
+    // ==================================================
     // Pagination
-    const currentPage = Math.max(Number(page), 1);
-    const perPage = Math.max(Number(limit), 1);
+    // ==================================================
+
+    const currentPage = Math.max(Number(page) || 1, 1);
+    const perPage = Math.max(Number(limit) || 10, 1);
 
     const skip = (currentPage - 1) * perPage;
 
+    // ==================================================
     // Sorting
+    // ==================================================
+
     let sortOption = {
       createdAt: -1,
     };
 
-    if (sort === "priceLow") {
-      sortOption = {
-        price: 1,
-      };
+    switch (sort) {
+      // Price: Low to High
+      case "priceLow":
+        sortOption = {
+          discountPrice: 1,
+          _id: 1,
+        };
+        break;
+
+      // Price: High to Low
+      case "priceHigh":
+        sortOption = {
+          discountPrice: -1,
+          _id: 1,
+        };
+        break;
+
+      // Rating: High to Low
+      case "rating":
+        sortOption = {
+          rating: -1,
+          numReviews: -1,
+          _id: 1,
+        };
+        break;
+
+      // Name: A-Z
+      case "nameAZ":
+        sortOption = {
+          name: 1,
+          _id: 1,
+        };
+        break;
+
+      // Name: Z-A
+      case "nameZA":
+        sortOption = {
+          name: -1,
+          _id: 1,
+        };
+        break;
+
+      // Newest
+      case "newest":
+        sortOption = {
+          createdAt: -1,
+          _id: 1,
+        };
+        break;
+
+      // Oldest
+      case "oldest":
+        sortOption = {
+          createdAt: 1,
+          _id: 1,
+        };
+        break;
+
+      // Default
+      default:
+        sortOption = {
+          createdAt: -1,
+          _id: 1,
+        };
+        break;
     }
 
-    if (sort === "priceHigh") {
-      sortOption = {
-        price: -1,
-      };
-    }
-
-    if (sort === "rating") {
-      sortOption = {
-        rating: -1,
-      };
-    }
-
-    if (sort === "oldest") {
-      sortOption = {
-        createdAt: 1,
-      };
-    }
+    // ==================================================
+    // Total Products
+    // ==================================================
 
     const totalProducts = await Product.countDocuments(filter);
+
+    // ==================================================
+    // Get Products
+    // ==================================================
 
     const products = await Product.find(filter)
       .populate("category", "name")
@@ -302,6 +381,10 @@ const getProducts = async (req, res) => {
       .sort(sortOption)
       .skip(skip)
       .limit(perPage);
+
+    // ==================================================
+    // Response
+    // ==================================================
 
     res.status(200).json({
       success: true,
