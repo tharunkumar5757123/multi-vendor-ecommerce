@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -6,6 +5,7 @@ import {
   addWishlistProduct,
   removeWishlistProduct,
 } from "../redux/slices/wishlistSlice";
+import { setCart } from "../redux/slices/cartSlice";
 import api from "../services/api";
 import { showToast } from "../utils/showToast";
 
@@ -13,7 +13,9 @@ function ProductCard({ product }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const { isAuthenticated, user } = useSelector(
+    (state) => state.auth
+  );
 
   const wishlistProducts = useSelector(
     (state) => state.wishlist.products || []
@@ -22,7 +24,8 @@ function ProductCard({ product }) {
   const [cartLoading, setCartLoading] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
-  const isCustomer = isAuthenticated && user?.role === "customer";
+  const isCustomer =
+    isAuthenticated && user?.role === "customer";
 
   const isWishlisted = wishlistProducts.some(
     (item) => item?._id === product?._id
@@ -41,7 +44,9 @@ function ProductCard({ product }) {
     product?.discountPrice &&
     product?.price > product?.discountPrice
       ? Math.round(
-          ((product.price - product.discountPrice) / product.price) * 100
+          ((product.price - product.discountPrice) /
+            product.price) *
+            100
         )
       : 0;
 
@@ -69,10 +74,18 @@ function ProductCard({ product }) {
     try {
       setCartLoading(true);
 
-      await api.post("/cart", {
+      // Add product to backend cart
+      const response = await api.post("/cart", {
         productId: product._id,
         quantity: 1,
       });
+
+      // Get updated cart from API response
+      const updatedCart =
+        response.data?.cart || response.data;
+
+      // Update Redux cart immediately
+      dispatch(setCart(updatedCart));
 
       showToast(
         "success",
@@ -256,14 +269,19 @@ function ProductCard({ product }) {
           <span className="text-xl font-bold text-gray-900">
             ₹
             {Number(
-              product?.discountPrice || product?.price || 0
+              product?.discountPrice ||
+                product?.price ||
+                0
             ).toLocaleString("en-IN")}
           </span>
 
           {product?.discountPrice &&
             product.discountPrice < product.price && (
               <span className="text-sm text-gray-400 line-through">
-                ₹{Number(product.price).toLocaleString("en-IN")}
+                ₹
+                {Number(product.price).toLocaleString(
+                  "en-IN"
+                )}
               </span>
             )}
         </div>

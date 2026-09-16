@@ -1,12 +1,19 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Loader from "../components/Loader";
 import api from "../services/api";
+
+import {
+  setCart,
+  clearCart,
+  removeCartItem,
+  updateCartItem,
+} from "../redux/slices/cartSlice";
+
 import {
   showConfirmToast,
   showToast,
@@ -14,18 +21,21 @@ import {
 
 function Cart() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const { isAuthenticated, user } = useSelector(
     (state) => state.auth
   );
 
-  const [cart, setCart] = useState(null);
+  const [cart, setCartState] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoading, setActionLoading] =
+    useState(false);
   const [error, setError] = useState("");
 
   const isCustomer =
-    isAuthenticated && user?.role === "customer";
+    isAuthenticated &&
+    user?.role === "customer";
 
   // ---------------------------------------
   // Fetch Cart
@@ -37,11 +47,21 @@ function Cart() {
 
       const response = await api.get("/cart");
 
-      setCart(response.data.cart || response.data);
+      const cartData =
+        response.data.cart || response.data;
+
+      setCartState(cartData);
+
+      // Sync Redux
+      dispatch(setCart(cartData));
     } catch (error) {
-      console.error("Cart fetch error:", error);
+      console.error(
+        "Cart fetch error:",
+        error
+      );
 
       if (error.response?.status === 401) {
+        dispatch(clearCart());
         navigate("/login");
         return;
       }
@@ -55,19 +75,27 @@ function Cart() {
     }
   };
 
+  // ---------------------------------------
+  // Authentication
+  // ---------------------------------------
   useEffect(() => {
     if (!isAuthenticated) {
+      dispatch(clearCart());
       navigate("/login");
       return;
     }
 
     if (!isCustomer) {
+      dispatch(clearCart());
       navigate("/unauthorized");
       return;
     }
 
     fetchCart();
-  }, [isAuthenticated, user?.role]);
+  }, [
+    isAuthenticated,
+    user?.role,
+  ]);
 
   // ---------------------------------------
   // Cart Items
@@ -118,26 +146,34 @@ function Cart() {
   // ---------------------------------------
   // Calculate Totals
   // ---------------------------------------
-  const subtotal = cartItems.reduce((total, item) => {
-    const product = getProduct(item);
+  const subtotal = cartItems.reduce(
+    (total, item) => {
+      const product = getProduct(item);
 
-    return (
-      total +
-      getPrice(product) * Number(item?.quantity || 0)
-    );
-  }, 0);
+      return (
+        total +
+        getPrice(product) *
+          Number(item?.quantity || 0)
+      );
+    },
+    0
+  );
 
-  // Same calculation as backend order controller
-  const shipping = subtotal >= 1000 ? 0 : 50;
+  const shipping =
+    subtotal >= 1000 ? 0 : 50;
 
   const tax = subtotal * 0.05;
 
-  const total = subtotal + shipping + tax;
+  const total =
+    subtotal + shipping + tax;
 
   // ---------------------------------------
   // Update Quantity
   // ---------------------------------------
-  const updateQuantity = async (productId, quantity) => {
+  const updateQuantity = async (
+    productId,
+    quantity
+  ) => {
     if (!productId || quantity < 1) {
       return;
     }
@@ -149,14 +185,20 @@ function Cart() {
 
     const product = item?.product;
 
-    if (product && quantity > product.stock) {
+    if (
+      product &&
+      quantity > product.stock
+    ) {
       showToast(
         "warning",
         "Stock limit reached",
         `Only ${product.stock} item${
-          product.stock === 1 ? "" : "s"
+          product.stock === 1
+            ? ""
+            : "s"
         } available in stock.`
       );
+
       return;
     }
 
@@ -170,7 +212,14 @@ function Cart() {
         }
       );
 
-      setCart(response.data.cart || response.data);
+      const cartData =
+        response.data.cart ||
+        response.data;
+
+      setCartState(cartData);
+
+      // Sync Redux
+      dispatch(setCart(cartData));
     } catch (error) {
       console.error(
         "Quantity update error:",
@@ -203,9 +252,25 @@ function Cart() {
         `/cart/${productId}`
       );
 
-      setCart(response.data.cart || response.data);
+      const cartData =
+        response.data.cart ||
+        response.data;
+
+      setCartState(cartData);
+
+      // Sync Redux
+      dispatch(setCart(cartData));
+
+      showToast(
+        "success",
+        "Product removed",
+        "The product was removed from your cart."
+      );
     } catch (error) {
-      console.error("Remove item error:", error);
+      console.error(
+        "Remove item error:",
+        error
+      );
 
       showToast(
         "error",
@@ -222,11 +287,13 @@ function Cart() {
   // Clear Cart
   // ---------------------------------------
   const handleClearCart = async () => {
-    const confirmed = await showConfirmToast({
-      title: "Clear cart?",
-      message: "This will remove all products from your cart.",
-      confirmText: "Clear Cart",
-    });
+    const confirmed =
+      await showConfirmToast({
+        title: "Clear cart?",
+        message:
+          "This will remove all products from your cart.",
+        confirmText: "Clear Cart",
+      });
 
     if (!confirmed) {
       return;
@@ -235,9 +302,17 @@ function Cart() {
     try {
       setActionLoading(true);
 
-      const response = await api.delete("/cart");
+      const response =
+        await api.delete("/cart");
 
-      setCart(response.data.cart || response.data);
+      const cartData =
+        response.data.cart ||
+        response.data;
+
+      setCartState(cartData);
+
+      // Clear Redux cart
+      dispatch(clearCart());
 
       showToast(
         "success",
@@ -245,7 +320,10 @@ function Cart() {
         "All products were removed from your cart."
       );
     } catch (error) {
-      console.error("Clear cart error:", error);
+      console.error(
+        "Clear cart error:",
+        error
+      );
 
       showToast(
         "error",
@@ -262,7 +340,10 @@ function Cart() {
   // Checkout
   // ---------------------------------------
   const handleCheckout = () => {
-    if (cartItems.length === 0 || actionLoading) {
+    if (
+      cartItems.length === 0 ||
+      actionLoading
+    ) {
       return;
     }
 
@@ -405,7 +486,9 @@ function Cart() {
 
                     const itemTotal =
                       price *
-                      Number(item.quantity || 0);
+                      Number(
+                        item.quantity || 0
+                      );
 
                     const productId =
                       product?._id ||
@@ -432,7 +515,9 @@ function Cart() {
                             }
                           >
                             <img
-                              src={getImageUrl(product)}
+                              src={getImageUrl(
+                                product
+                              )}
                               alt={
                                 product?.name ||
                                 "Product"

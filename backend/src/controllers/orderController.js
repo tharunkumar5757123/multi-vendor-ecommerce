@@ -28,7 +28,9 @@ const createOrder = async (req, res, next) => {
 
     session.startTransaction();
 
-    // Get address
+    // =================================================
+    // GET ADDRESS
+    // =================================================
     const address = await Address.findOne({
       _id: addressId,
       user: req.user._id,
@@ -42,7 +44,9 @@ const createOrder = async (req, res, next) => {
       });
     }
 
-    // Get cart
+    // =================================================
+    // GET CART
+    // =================================================
     const cart = await Cart.findOne({
       user: req.user._id,
     })
@@ -60,9 +64,9 @@ const createOrder = async (req, res, next) => {
     const orderItems = [];
     let subtotal = 0;
 
-    // ================================================
-    // Validate products and calculate subtotal
-    // ================================================
+    // =================================================
+    // VALIDATE PRODUCTS + CALCULATE SUBTOTAL
+    // =================================================
     for (const cartItem of cart.items) {
       const product = cartItem.product;
 
@@ -70,10 +74,12 @@ const createOrder = async (req, res, next) => {
         await session.abortTransaction();
 
         return res.status(400).json({
-          message: "One or more products are no longer available",
+          message:
+            "One or more products are no longer available",
         });
       }
 
+      // Product active check
       if (!product.isActive) {
         await session.abortTransaction();
 
@@ -82,6 +88,7 @@ const createOrder = async (req, res, next) => {
         });
       }
 
+      // Stock check
       if (product.stock <= 0) {
         await session.abortTransaction();
 
@@ -90,6 +97,7 @@ const createOrder = async (req, res, next) => {
         });
       }
 
+      // Quantity vs stock
       if (cartItem.quantity > product.stock) {
         await session.abortTransaction();
 
@@ -98,62 +106,93 @@ const createOrder = async (req, res, next) => {
         });
       }
 
+      // =================================================
+      // EFFECTIVE PRICE
+      // =================================================
       const price =
         product.discountPrice &&
         product.discountPrice < product.price
           ? product.discountPrice
           : product.price;
 
-      const itemTotal = price * cartItem.quantity;
+      // =================================================
+      // ITEM SUBTOTAL
+      // =================================================
+      const itemSubtotal = Number(
+        (price * cartItem.quantity).toFixed(2)
+      );
 
-      subtotal += itemTotal;
+      subtotal += itemSubtotal;
 
+      // =================================================
+      // ORDER ITEM
+      // IMPORTANT:
+      // Order schema uses itemStatus
+      // =================================================
       orderItems.push({
         product: product._id,
         seller: product.seller,
         name: product.name,
         price,
         quantity: cartItem.quantity,
-        image: product.images?.[0] || "",
-        status: "placed",
+        subtotal: itemSubtotal,
+
+        image:
+          product.images?.[0]?.url ||
+          product.images?.[0] ||
+          "",
+
+        itemStatus: "placed",
       });
     }
 
-    // ================================================
-    // Shipping
-    // Free shipping for orders >= ₹1000
-    // ================================================
-    const shippingPrice = subtotal >= 1000 ? 0 : 50;
+    // =================================================
+    // ROUND SUBTOTAL
+    // =================================================
+    subtotal = Number(subtotal.toFixed(2));
 
-    // ================================================
-    // Tax - 5%
-    // ================================================
-    const tax = Number((subtotal * 0.05).toFixed(2));
+    // =================================================
+    // SHIPPING
+    // Free shipping >= ₹1000
+    // IMPORTANT:
+    // Order schema uses shippingFee
+    // =================================================
+    const shippingFee =
+      subtotal >= 1000 ? 0 : 50;
 
-    // ================================================
-    // Final total
-    // ================================================
-    const totalAmount = Number(
-      (subtotal + shippingPrice + tax).toFixed(2)
+    // =================================================
+    // TAX - 5%
+    // =================================================
+    const tax = Number(
+      (subtotal * 0.05).toFixed(2)
     );
 
-    // ================================================
-    // Address snapshot
-    // ================================================
+    // =================================================
+    // FINAL TOTAL
+    // =================================================
+    const totalAmount = Number(
+      (
+        subtotal +
+        shippingFee +
+        tax
+      ).toFixed(2)
+    );
+
+    // =================================================
+    // ADDRESS SNAPSHOT
+    // =================================================
     const shippingAddress = {
       fullName: address.fullName,
       phone: address.phone,
-      addressLine1: address.addressLine1,
-      addressLine2: address.addressLine2 || "",
+      address: address.address,
       city: address.city,
       state: address.state,
-      postalCode: address.postalCode,
-      country: address.country || "India",
+      pincode: address.pincode,
     };
 
-    // ================================================
-    // Create order
-    // ================================================
+    // =================================================
+    // CREATE ORDER
+    // =================================================
     const createdOrders = await Order.create(
       [
         {
@@ -165,7 +204,7 @@ const createOrder = async (req, res, next) => {
 
           subtotal,
 
-          shippingPrice,
+          shippingFee,
 
           tax,
 
@@ -173,52 +212,63 @@ const createOrder = async (req, res, next) => {
 
           paymentMethod,
 
-          paymentStatus:
-            paymentMethod === "cod" ? "pending" : "pending",
+          paymentStatus: "pending",
 
           orderStatus: "placed",
-
-          paidAt: null,
-
-          deliveredAt: null,
         },
       ],
-      { session }
+      {
+        session,
+      }
     );
 
     const order = createdOrders[0];
 
-    // ================================================
-    // Reduce product stock
-    // ================================================
+    // =================================================
+    // REDUCE PRODUCT STOCK
+    // =================================================
     for (const cartItem of cart.items) {
-      const product = cartItem.product;
-
       await Product.findByIdAndUpdate(
-        product._id,
+        cartItem.product._id,
         {
           $inc: {
             stock: -cartItem.quantity,
           },
         },
-        { session }
+        {
+          session,
+        }
       );
     }
 
-    // ================================================
-    // Clear cart
-    // ================================================
+    // =================================================
+    // CLEAR CART
+    // =================================================
     cart.items = [];
 
-    await cart.save({ session });
+    await cart.save({
+      session,
+    });
 
-    // Commit transaction
+    // =================================================
+    // COMMIT TRANSACTION
+    // =================================================
     await session.commitTransaction();
 
-    // Populate response
-    const populatedOrder = await Order.findById(order._id)
-      .populate("items.product", "name brand images")
-      .populate("items.seller", "name email");
+    // =================================================
+    // POPULATE ORDER
+    // =================================================
+    const populatedOrder = await Order.findById(
+      order._id
+    )
+      .populate(
+        "items.product",
+        "name brand images"
+      )
+      .populate(
+        "items.seller",
+        "name email"
+      );
 
     return res.status(201).json({
       message: "Order created successfully",
@@ -248,9 +298,17 @@ const getMyOrders = async (req, res, next) => {
     const orders = await Order.find({
       user: req.user._id,
     })
-      .populate("items.product", "name brand images")
-      .populate("items.seller", "name email")
-      .sort({ createdAt: -1 });
+      .populate(
+        "items.product",
+        "name brand images"
+      )
+      .populate(
+        "items.seller",
+        "name email"
+      )
+      .sort({
+        createdAt: -1,
+      });
 
     res.status(200).json({
       message: "Orders fetched successfully",
@@ -266,9 +324,17 @@ const getMyOrders = async (req, res, next) => {
 // =====================================================
 const getOrderById = async (req, res, next) => {
   try {
-    const order = await Order.findById(req.params.id)
-      .populate("items.product", "name brand images")
-      .populate("items.seller", "name email");
+    const order = await Order.findById(
+      req.params.id
+    )
+      .populate(
+        "items.product",
+        "name brand images"
+      )
+      .populate(
+        "items.seller",
+        "name email"
+      );
 
     if (!order) {
       return res.status(404).json({
@@ -279,10 +345,12 @@ const getOrderById = async (req, res, next) => {
     // Customer can only see their own order
     if (
       req.user.role === "customer" &&
-      order.user.toString() !== req.user._id.toString()
+      order.user.toString() !==
+        req.user._id.toString()
     ) {
       return res.status(403).json({
-        message: "You are not authorized to view this order",
+        message:
+          "You are not authorized to view this order",
       });
     }
 
@@ -304,6 +372,9 @@ const cancelOrder = async (req, res, next) => {
   try {
     session.startTransaction();
 
+    // =================================================
+    // FIND CUSTOMER ORDER
+    // =================================================
     const order = await Order.findOne({
       _id: req.params.id,
       user: req.user._id,
@@ -317,9 +388,17 @@ const cancelOrder = async (req, res, next) => {
       });
     }
 
-    // Cannot cancel already shipped/delivered/cancelled
+    // =================================================
+    // CHECK STATUS
+    // =================================================
+    const cancellableStatuses = [
+      "placed",
+      "confirmed",
+      "processing",
+    ];
+
     if (
-      ["shipped", "delivered", "cancelled"].includes(
+      !cancellableStatuses.includes(
         order.orderStatus
       )
     ) {
@@ -330,7 +409,9 @@ const cancelOrder = async (req, res, next) => {
       });
     }
 
-    // Restore product stock
+    // =================================================
+    // RESTORE STOCK
+    // =================================================
     for (const item of order.items) {
       if (item.product) {
         await Product.findByIdAndUpdate(
@@ -340,28 +421,74 @@ const cancelOrder = async (req, res, next) => {
               stock: item.quantity,
             },
           },
-          { session }
+          {
+            session,
+          }
         );
       }
     }
 
+    // =================================================
+    // UPDATE ORDER STATUS
+    // IMPORTANT:
+    // Use orderStatus = cancelled
+    // NOT paymentStatus = cancelled
+    // =================================================
     order.orderStatus = "cancelled";
 
-    // Online payment is not automatically refunded here.
-    // Refund handling can be added separately through Stripe.
-    if (order.paymentStatus !== "paid") {
-      order.paymentStatus = "cancelled";
-    }
+    // =================================================
+    // UPDATE ITEM STATUS
+    // IMPORTANT:
+    // Schema uses itemStatus
+    // =================================================
+    order.items.forEach((item) => {
+      item.itemStatus = "cancelled";
+    });
 
-    await order.save({ session });
+    // =================================================
+    // PAYMENT STATUS
+    // DO NOT SET "cancelled"
+    //
+    // Valid values:
+    // pending
+    // paid
+    // failed
+    // refunded
+    //
+    // For COD:
+    // pending remains pending
+    //
+    // For paid online:
+    // paid remains paid until
+    // Stripe refund is actually processed.
+    // =================================================
 
+    await order.save({
+      session,
+    });
+
+    // =================================================
+    // COMMIT
+    // =================================================
     await session.commitTransaction();
 
-    const updatedOrder = await Order.findById(order._id)
-      .populate("items.product", "name brand images")
-      .populate("items.seller", "name email");
+    // =================================================
+    // GET UPDATED ORDER
+    // =================================================
+    const updatedOrder = await Order.findById(
+      order._id
+    )
+      .populate(
+        "items.product",
+        "name brand images"
+      )
+      .populate(
+        "items.seller",
+        "name email"
+      );
 
-    res.status(200).json({
+    return res.status(200).json({
+      success: true,
       message: "Order cancelled successfully",
       order: updatedOrder,
     });
@@ -389,27 +516,43 @@ const getSellerOrders = async (req, res, next) => {
     const orders = await Order.find({
       "items.seller": req.user._id,
     })
-      .populate("items.product", "name brand images")
-      .populate("items.seller", "name email")
-      .populate("user", "name email")
-      .sort({ createdAt: -1 });
+      .populate(
+        "items.product",
+        "name brand images"
+      )
+      .populate(
+        "items.seller",
+        "name email"
+      )
+      .populate(
+        "user",
+        "name email"
+      )
+      .sort({
+        createdAt: -1,
+      });
 
-    // Only return seller's own items
-    const sellerOrders = orders.map((order) => {
-      const orderObject = order.toObject();
+    // Only seller's own items
+    const sellerOrders = orders.map(
+      (order) => {
+        const orderObject =
+          order.toObject();
 
-      orderObject.items = orderObject.items.filter(
-        (item) =>
-          item.seller &&
-          item.seller._id.toString() ===
-            req.user._id.toString()
-      );
+        orderObject.items =
+          orderObject.items.filter(
+            (item) =>
+              item.seller &&
+              item.seller._id.toString() ===
+                req.user._id.toString()
+          );
 
-      return orderObject;
-    });
+        return orderObject;
+      }
+    );
 
     res.status(200).json({
-      message: "Seller orders fetched successfully",
+      message:
+        "Seller orders fetched successfully",
       orders: sellerOrders,
     });
   } catch (error) {
@@ -443,7 +586,9 @@ const updateOrderStatusBySeller = async (
       });
     }
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(
+      orderId
+    );
 
     if (!order) {
       return res.status(404).json({
@@ -451,10 +596,16 @@ const updateOrderStatusBySeller = async (
       });
     }
 
+    // =================================================
+    // FIND SELLER ITEM
+    // IMPORTANT:
+    // Use itemStatus, NOT item.status
+    // =================================================
     const item = order.items.find(
       (orderItem) =>
         orderItem.product &&
-        orderItem.product.toString() === productId &&
+        orderItem.product.toString() ===
+          productId &&
         orderItem.seller &&
         orderItem.seller.toString() ===
           req.user._id.toString()
@@ -467,7 +618,9 @@ const updateOrderStatusBySeller = async (
       });
     }
 
-    // Status progression
+    // =================================================
+    // STATUS PROGRESSION
+    // =================================================
     const statusOrder = [
       "placed",
       "confirmed",
@@ -476,78 +629,166 @@ const updateOrderStatusBySeller = async (
       "delivered",
     ];
 
+    const currentStatus =
+      item.itemStatus;
+
     if (
       status !== "cancelled" &&
       statusOrder.indexOf(status) <
-        statusOrder.indexOf(item.status)
+        statusOrder.indexOf(currentStatus)
     ) {
       return res.status(400).json({
-        message: "Order status cannot move backwards",
+        message:
+          "Order status cannot move backwards",
       });
     }
 
-    item.status = status;
-
-    // If seller cancels their item, restore stock
-    if (status === "cancelled") {
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: {
-          stock: item.quantity,
-        },
+    // =================================================
+    // PREVENT DUPLICATE CANCELLATION
+    // =================================================
+    if (
+      status === "cancelled" &&
+      currentStatus === "cancelled"
+    ) {
+      return res.status(400).json({
+        message:
+          "This order item is already cancelled",
       });
     }
 
-    // ================================================
-    // Calculate overall order status
-    // ================================================
-    const itemStatuses = order.items.map(
-      (orderItem) => orderItem.status
-    );
+    // =================================================
+    // PREVENT UPDATE AFTER CANCEL
+    // =================================================
+    if (
+      currentStatus === "cancelled" &&
+      status !== "cancelled"
+    ) {
+      return res.status(400).json({
+        message:
+          "A cancelled order item cannot be updated",
+      });
+    }
 
+    // =================================================
+    // RESTORE STOCK WHEN SELLER CANCELS
+    // =================================================
+    if (
+      status === "cancelled" &&
+      currentStatus !== "cancelled"
+    ) {
+      await Product.findByIdAndUpdate(
+        item.product,
+        {
+          $inc: {
+            stock: item.quantity,
+          },
+        }
+      );
+    }
+
+    // =================================================
+    // UPDATE ITEM STATUS
+    // IMPORTANT:
+    // Schema field is itemStatus
+    // =================================================
+    item.itemStatus = status;
+
+    // =================================================
+    // CALCULATE OVERALL ORDER STATUS
+    // =================================================
+    const itemStatuses =
+      order.items.map(
+        (orderItem) =>
+          orderItem.itemStatus
+      );
+
+    // All cancelled
     if (
       itemStatuses.every(
-        (itemStatus) => itemStatus === "delivered"
-      )
-    ) {
-      order.orderStatus = "delivered";
-      order.deliveredAt = new Date();
-    } else if (
-      itemStatuses.some(
-        (itemStatus) => itemStatus === "shipped"
-      )
-    ) {
-      order.orderStatus = "shipped";
-    } else if (
-      itemStatuses.some(
-        (itemStatus) => itemStatus === "processing"
-      )
-    ) {
-      order.orderStatus = "processing";
-    } else if (
-      itemStatuses.some(
-        (itemStatus) => itemStatus === "confirmed"
-      )
-    ) {
-      order.orderStatus = "confirmed";
-    } else if (
-      itemStatuses.every(
-        (itemStatus) => itemStatus === "cancelled"
+        (itemStatus) =>
+          itemStatus === "cancelled"
       )
     ) {
       order.orderStatus = "cancelled";
-    } else {
+    }
+
+    // All completed items are delivered/cancelled
+    else if (
+      itemStatuses.every(
+        (itemStatus) =>
+          itemStatus === "delivered" ||
+          itemStatus === "cancelled"
+      ) &&
+      itemStatuses.some(
+        (itemStatus) =>
+          itemStatus === "delivered"
+      )
+    ) {
+      order.orderStatus = "delivered";
+    }
+
+    // At least one shipped
+    else if (
+      itemStatuses.some(
+        (itemStatus) =>
+          itemStatus === "shipped"
+      )
+    ) {
+      order.orderStatus = "shipped";
+    }
+
+    // At least one processing
+    else if (
+      itemStatuses.some(
+        (itemStatus) =>
+          itemStatus === "processing"
+      )
+    ) {
+      order.orderStatus = "processing";
+    }
+
+    // At least one confirmed
+    else if (
+      itemStatuses.some(
+        (itemStatus) =>
+          itemStatus === "confirmed"
+      )
+    ) {
+      order.orderStatus = "confirmed";
+    }
+
+    // Otherwise placed
+    else {
       order.orderStatus = "placed";
     }
 
+    // =================================================
+    // SAVE
+    // =================================================
     await order.save();
 
-    const updatedOrder = await Order.findById(order._id)
-      .populate("items.product", "name brand images")
-      .populate("items.seller", "name email")
-      .populate("user", "name email");
+    // =================================================
+    // RETURN UPDATED ORDER
+    // =================================================
+    const updatedOrder = await Order.findById(
+      order._id
+    )
+      .populate(
+        "items.product",
+        "name brand images"
+      )
+      .populate(
+        "items.seller",
+        "name email"
+      )
+      .populate(
+        "user",
+        "name email"
+      );
 
-    res.status(200).json({
-      message: "Order status updated successfully",
+    return res.status(200).json({
+      message:
+        "Order status updated successfully",
       order: updatedOrder,
     });
   } catch (error) {
@@ -558,16 +799,32 @@ const updateOrderStatusBySeller = async (
 // =====================================================
 // GET ALL ORDERS - ADMIN
 // =====================================================
-const getAllOrders = async (req, res, next) => {
+const getAllOrders = async (
+  req,
+  res,
+  next
+) => {
   try {
     const orders = await Order.find()
-      .populate("user", "name email")
-      .populate("items.product", "name brand images")
-      .populate("items.seller", "name email")
-      .sort({ createdAt: -1 });
+      .populate(
+        "user",
+        "name email"
+      )
+      .populate(
+        "items.product",
+        "name brand images"
+      )
+      .populate(
+        "items.seller",
+        "name email"
+      )
+      .sort({
+        createdAt: -1,
+      });
 
     res.status(200).json({
-      message: "All orders fetched successfully",
+      message:
+        "All orders fetched successfully",
       orders,
     });
   } catch (error) {

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -7,6 +6,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Loader from "../components/Loader";
 import api from "../services/api";
+import toast from "react-hot-toast";
 
 function Orders() {
   const navigate = useNavigate();
@@ -18,6 +18,8 @@ function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancellingOrderId, setCancellingOrderId] =
+    useState(null);
 
   const [statusFilter, setStatusFilter] =
     useState("all");
@@ -83,6 +85,71 @@ function Orders() {
   }, [isAuthenticated, user?.role]);
 
   // ---------------------------------------
+  // Get Order ID
+  // ---------------------------------------
+  const getOrderId = (order) => {
+    return (
+      order?._id ||
+      order?.id ||
+      order?.orderId
+    );
+  };
+
+  // ---------------------------------------
+  // Cancel Order
+  // ---------------------------------------
+  const handleCancelOrder = async (orderId) => {
+    // const confirmed = window.confirm(
+    //   "Are you sure you want to cancel this order?"
+    // );
+
+    // if (!confirmed) {
+    //   return;
+    // }
+
+    try {
+      setCancellingOrderId(orderId);
+
+      await api.put(`/orders/${orderId}/cancel`);
+
+      // Update order immediately in UI
+      setOrders((previousOrders) =>
+        previousOrders.map((order) => {
+          const currentOrderId =
+            getOrderId(order);
+
+          if (currentOrderId !== orderId) {
+            return order;
+          }
+
+          return {
+            ...order,
+            orderStatus: "cancelled",
+            paymentStatus:
+              order.paymentStatus === "paid"
+                ? order.paymentStatus
+                : "cancelled",
+          };
+        })
+      );
+
+   toast.success("Order cancelled successfully.");
+    } catch (error) {
+      console.error(
+        "Cancel order error:",
+        error
+      );
+
+      toast.error(
+  error.response?.data?.message ||
+    "Failed to cancel order."
+);
+    } finally {
+      setCancellingOrderId(null);
+    }
+  };
+
+  // ---------------------------------------
   // Filter Orders
   // ---------------------------------------
   const filteredOrders =
@@ -93,17 +160,6 @@ function Orders() {
             order.orderStatus ===
             statusFilter
         );
-
-  // ---------------------------------------
-  // Get Order ID
-  // ---------------------------------------
-  const getOrderId = (order) => {
-    return (
-      order?._id ||
-      order?.id ||
-      order?.orderId
-    );
-  };
 
   // ---------------------------------------
   // Get Display Order Number
@@ -202,6 +258,9 @@ function Orders() {
       case "failed":
         return "bg-red-100 text-red-700";
 
+      case "cancelled":
+        return "bg-red-100 text-red-700";
+
       case "pending":
       default:
         return "bg-yellow-100 text-yellow-700";
@@ -225,17 +284,29 @@ function Orders() {
   // ---------------------------------------
   // Get Product Image
   // ---------------------------------------
-  const getProductImage = (product) => {
-    const image = product?.images?.[0];
+  const getProductImage = (product, item) => {
+    const productImage =
+      product?.images?.[0];
 
-    if (typeof image === "string") {
-      return image;
+    if (typeof productImage === "string") {
+      return productImage;
     }
 
-    return (
-      image?.url ||
-      "https://via.placeholder.com/100x100?text=No+Image"
-    );
+    if (productImage?.url) {
+      return productImage.url;
+    }
+
+    // Some orders store image directly
+    // inside the order item
+    if (typeof item?.image === "string") {
+      return item.image;
+    }
+
+    if (item?.image?.url) {
+      return item.image.url;
+    }
+
+    return "https://via.placeholder.com/100x100?text=No+Image";
   };
 
   // ---------------------------------------
@@ -321,7 +392,8 @@ function Orders() {
               <button
                 type="button"
                 onClick={fetchOrders}
-                className="mt-3 rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                disabled={loading}
+                className="mt-3 rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
               >
                 Try Again
               </button>
@@ -463,6 +535,18 @@ function Orders() {
                     return null;
                   }
 
+                  const canCancel = [
+                    "placed",
+                    "confirmed",
+                    "processing",
+                  ].includes(
+                    order.orderStatus
+                  );
+
+                  const isCancelling =
+                    cancellingOrderId ===
+                    orderId;
+
                   return (
                     <div
                       key={orderId}
@@ -549,7 +633,8 @@ function Orders() {
 
                                 const imageUrl =
                                   getProductImage(
-                                    product
+                                    product,
+                                    item
                                   );
 
                                 const itemPrice =
@@ -639,6 +724,7 @@ function Orders() {
                         {/* STATUS + ACTION */}
                         {/* =========================== */}
                         <div className="mt-5 flex flex-col gap-4 border-t border-gray-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                          {/* Status */}
                           <div className="flex flex-wrap gap-3">
                             {/* Order Status */}
                             <span
@@ -663,17 +749,41 @@ function Orders() {
                             </span>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              navigate(
-                                `/orders/${orderId}`
-                              )
-                            }
-                            className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
-                          >
-                            View Order
-                          </button>
+                          {/* Actions */}
+                          <div className="flex flex-wrap gap-2">
+                            {/* Cancel Order */}
+                            {canCancel && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCancelOrder(
+                                    orderId
+                                  )
+                                }
+                                disabled={
+                                  isCancelling
+                                }
+                                className="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {isCancelling
+                                  ? "Cancelling..."
+                                  : "Cancel Order"}
+                              </button>
+                            )}
+
+                            {/* View Order */}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                navigate(
+                                  `/orders/${orderId}`
+                                )
+                              }
+                              className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                            >
+                              View Order
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

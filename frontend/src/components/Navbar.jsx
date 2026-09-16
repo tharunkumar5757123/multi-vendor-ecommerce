@@ -1,9 +1,13 @@
-
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { logout } from "../redux/slices/authSlice";
+import {
+  setCart,
+  clearCart,
+} from "../redux/slices/cartSlice";
+
 import { showToast } from "../utils/showToast";
 
 function ThemeToggle({
@@ -19,7 +23,8 @@ function ThemeToggle({
       aria-label="Toggle theme"
       title="Toggle theme"
     >
-      {theme === "dark" ? "Light" : "Dark"}
+      {/* {theme === "dark" ? "Light" : "Dark"} */}
+      {theme === "dark" ? "☀️" : "🌙"}
     </button>
   );
 }
@@ -49,37 +54,133 @@ function Navbar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] =
+    useState(false);
+
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem("theme") || "light";
+    return (
+      localStorage.getItem("theme") || "light"
+    );
   });
 
   const { user, isAuthenticated } = useSelector(
     (state) => state.auth
   );
 
+  // =======================================
+  // CART FROM REDUX
+  // =======================================
+  const cartItems = useSelector(
+    (state) => state.cart?.items || []
+  );
+
+  // Total quantity
+  const cartCount = cartItems.reduce(
+    (total, item) =>
+      total + Number(item?.quantity || 0),
+    0
+  );
+
+  // =======================================
+  // LOAD CART FROM BACKEND
+  // =======================================
+  useEffect(() => {
+    const fetchCart = async () => {
+      if (
+        !isAuthenticated ||
+        user?.role !== "customer"
+      ) {
+        dispatch(clearCart());
+        return;
+      }
+
+      try {
+        const token =
+          localStorage.getItem("token");
+
+        if (!token) {
+          dispatch(clearCart());
+          return;
+        }
+
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/cart`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+
+        const cartData =
+          data.cart || data;
+
+        dispatch(setCart(cartData));
+      } catch (error) {
+        console.error(
+          "Navbar cart fetch error:",
+          error
+        );
+      }
+    };
+
+    fetchCart();
+  }, [
+    isAuthenticated,
+    user?.role,
+    dispatch,
+  ]);
+
+  // =======================================
+  // THEME
+  // =======================================
   useEffect(() => {
     const isDark = theme === "dark";
 
-    document.documentElement.classList.toggle("dark", isDark);
-    localStorage.setItem("theme", theme);
+    document.documentElement.classList.toggle(
+      "dark",
+      isDark
+    );
+
+    localStorage.setItem(
+      "theme",
+      theme
+    );
   }, [theme]);
 
   const toggleTheme = () => {
     setTheme((currentTheme) =>
-      currentTheme === "dark" ? "light" : "dark"
+      currentTheme === "dark"
+        ? "light"
+        : "dark"
     );
   };
 
+  // =======================================
+  // LOGOUT
+  // =======================================
   const handleLogout = () => {
     dispatch(logout());
+
+    // Clear cart badge
+    dispatch(clearCart());
+
     setMobileMenuOpen(false);
+
     showToast(
       "success",
       "Logged out",
       ""
     );
-    navigate("/");
+
+    navigate("/login");
   };
 
   const closeMobileMenu = () => {
@@ -105,11 +206,14 @@ function Navbar() {
             className="flex items-center gap-2"
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white shadow-sm">
-              M
+              S
             </div>
 
             <span className="text-2xl font-extrabold tracking-tight text-gray-900">
-              Multi<span className="text-indigo-600">Shop</span>
+             🛍️ Shop
+              <span className="text-indigo-600">
+                Basket
+              </span>
             </span>
           </NavLink>
 
@@ -142,17 +246,18 @@ function Navbar() {
 
                 <NavLink
                   to="/login"
-                  className="font-medium text-gray-700 transition hover:text-indigo-600"
+                  // className="font-medium text-gray-700 transition hover:text-indigo-600 "
+                  className={navLinkClass}
                 >
                   Login
                 </NavLink>
 
-                <NavLink
+                {/* <NavLink
                   to="/register"
                   className="rounded-lg bg-indigo-600 px-5 py-2.5 font-semibold text-white shadow-sm transition hover:bg-indigo-700"
                 >
                   Register
-                </NavLink>
+                </NavLink> */}
 
                 <ThemeToggle
                   theme={theme}
@@ -166,7 +271,7 @@ function Navbar() {
               user?.role === "customer" && (
                 <>
                   <NavLink
-                    to="/"
+                    to="/home"
                     className={navLinkClass}
                   >
                     Home
@@ -179,11 +284,18 @@ function Navbar() {
                     Products
                   </NavLink>
 
+                  {/* ================= CART ================= */}
                   <NavLink
                     to="/cart"
-                    className={navLinkClass}
+                    className={`${navLinkClass} relative`}
                   >
                     Cart
+
+                    {cartCount > 0 && (
+                      <span className="absolute -right-4 -top-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+                        {cartCount}
+                      </span>
+                    )}
                   </NavLink>
 
                   <NavLink
@@ -330,7 +442,9 @@ function Navbar() {
           {/* ================= MOBILE BUTTON ================= */}
           <button
             onClick={() =>
-              setMobileMenuOpen(!mobileMenuOpen)
+              setMobileMenuOpen(
+                !mobileMenuOpen
+              )
             }
             className="rounded-lg p-2 text-gray-700 hover:bg-gray-100 lg:hidden"
             aria-label="Toggle menu"
@@ -448,12 +562,19 @@ function Navbar() {
                       Products
                     </NavLink>
 
+                    {/* ================= MOBILE CART ================= */}
                     <NavLink
                       to="/cart"
                       onClick={closeMobileMenu}
-                      className={navLinkClass}
+                      className={`${navLinkClass} flex items-center gap-2`}
                     >
-                      Cart
+                      <span>Cart</span>
+
+                      {cartCount > 0 && (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+                          {cartCount}
+                        </span>
+                      )}
                     </NavLink>
 
                     <NavLink
@@ -607,7 +728,9 @@ function Navbar() {
                     onClick={toggleTheme}
                     className="mb-3 w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 font-semibold text-gray-700 transition hover:bg-gray-50"
                   >
-                    {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                    {theme === "dark"
+                      ? "Light Mode"
+                      : "Dark Mode"}
                   </button>
 
                   <button

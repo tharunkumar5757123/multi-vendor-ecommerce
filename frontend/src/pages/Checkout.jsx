@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -35,14 +34,17 @@ function Checkout() {
   const [showAddressForm, setShowAddressForm] =
     useState(false);
 
+  const [editingAddress, setEditingAddress] =
+    useState(null);
+
   const [error, setError] = useState("");
 
   const isCustomer =
     isAuthenticated && user?.role === "customer";
 
-  // ---------------------------------------
-  // Fetch Checkout Data
-  // ---------------------------------------
+  // =====================================================
+  // FETCH CHECKOUT DATA
+  // =====================================================
   const fetchCheckoutData = async () => {
     try {
       setLoading(true);
@@ -72,13 +74,9 @@ function Checkout() {
       );
 
       if (defaultAddress) {
-        setSelectedAddress(
-          defaultAddress._id
-        );
+        setSelectedAddress(defaultAddress._id);
       } else if (addressData.length > 0) {
-        setSelectedAddress(
-          addressData[0]._id
-        );
+        setSelectedAddress(addressData[0]._id);
       } else {
         setSelectedAddress("");
       }
@@ -102,9 +100,9 @@ function Checkout() {
     }
   };
 
-  // ---------------------------------------
-  // Authentication Check
-  // ---------------------------------------
+  // =====================================================
+  // AUTHENTICATION CHECK
+  // =====================================================
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login");
@@ -119,9 +117,9 @@ function Checkout() {
     fetchCheckoutData();
   }, [isAuthenticated, user?.role]);
 
-  // ---------------------------------------
-  // Add Address
-  // ---------------------------------------
+  // =====================================================
+  // ADD ADDRESS
+  // =====================================================
   const handleAddAddress = async (formData) => {
     try {
       setAddressLoading(true);
@@ -135,13 +133,18 @@ function Checkout() {
         response.data.address ||
         response.data;
 
+      // If backend returns all updated data,
+      // this still works with the new address.
       setAddresses((previous) => [
         ...previous,
         newAddress,
       ]);
 
       setSelectedAddress(newAddress._id);
+
       setShowAddressForm(false);
+      setEditingAddress(null);
+
       showToast(
         "success",
         "Address saved",
@@ -164,18 +167,174 @@ function Checkout() {
     }
   };
 
-  // ---------------------------------------
-  // Cart Items
-  // ---------------------------------------
+  // =====================================================
+  // EDIT ADDRESS
+  // =====================================================
+  const handleUpdateAddress = async (formData) => {
+    if (!editingAddress?._id) {
+      return;
+    }
+
+    try {
+      setAddressLoading(true);
+
+      const response = await api.put(
+        `/addresses/${editingAddress._id}`,
+        formData
+      );
+
+      const updatedAddress =
+        response.data.address ||
+        response.data;
+
+      setAddresses((previous) =>
+        previous.map((address) =>
+          address._id === updatedAddress._id
+            ? updatedAddress
+            : address
+        )
+      );
+
+      setSelectedAddress(
+        updatedAddress._id
+      );
+
+      setEditingAddress(null);
+      setShowAddressForm(false);
+
+      showToast(
+        "success",
+        "Address updated",
+        "Your delivery address has been updated."
+      );
+    } catch (error) {
+      console.error(
+        "Update address error:",
+        error
+      );
+
+      showToast(
+        "error",
+        "Address not updated",
+        error.response?.data?.message ||
+          "Failed to update address."
+      );
+    } finally {
+      setAddressLoading(false);
+    }
+  };
+
+  // =====================================================
+  // DELETE ADDRESS
+  // =====================================================
+  const handleDeleteAddress = async (
+    addressId
+  ) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this address?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setAddressLoading(true);
+
+      await api.delete(
+        `/addresses/${addressId}`
+      );
+
+      const remainingAddresses =
+        addresses.filter(
+          (address) =>
+            address._id !== addressId
+        );
+
+      setAddresses(remainingAddresses);
+
+      // If deleted address was selected,
+      // select default or first remaining address.
+      if (selectedAddress === addressId) {
+        const defaultAddress =
+          remainingAddresses.find(
+            (address) => address.isDefault
+          );
+
+        if (defaultAddress) {
+          setSelectedAddress(
+            defaultAddress._id
+          );
+        } else if (
+          remainingAddresses.length > 0
+        ) {
+          setSelectedAddress(
+            remainingAddresses[0]._id
+          );
+        } else {
+          setSelectedAddress("");
+        }
+      }
+
+      // Close edit form if deleted address
+      // was being edited.
+      if (
+        editingAddress?._id === addressId
+      ) {
+        setEditingAddress(null);
+        setShowAddressForm(false);
+      }
+
+      showToast(
+        "success",
+        "Address deleted",
+        "The delivery address has been removed."
+      );
+    } catch (error) {
+      console.error(
+        "Delete address error:",
+        error
+      );
+
+      showToast(
+        "error",
+        "Address not deleted",
+        error.response?.data?.message ||
+          "Failed to delete address."
+      );
+    } finally {
+      setAddressLoading(false);
+    }
+  };
+
+  // =====================================================
+  // EDIT ADDRESS BUTTON
+  // =====================================================
+  const handleEditAddress = (address) => {
+    setEditingAddress(address);
+    setShowAddressForm(true);
+  };
+
+  // =====================================================
+  // CANCEL ADDRESS FORM
+  // =====================================================
+  const handleCancelAddressForm = () => {
+    setEditingAddress(null);
+    setShowAddressForm(false);
+  };
+
+  // =====================================================
+  // CART ITEMS
+  // =====================================================
   const cartItems = cart?.items || [];
 
   const getProduct = (item) => {
     return item?.product || {};
   };
 
-  // ---------------------------------------
-  // Product Price
-  // ---------------------------------------
+  // =====================================================
+  // PRODUCT PRICE
+  // =====================================================
   const getPrice = (product) => {
     if (
       product?.discountPrice &&
@@ -187,12 +346,18 @@ function Checkout() {
     return Number(product?.price || 0);
   };
 
-  // ---------------------------------------
-  // Product Image
-  // ---------------------------------------
+  // =====================================================
+  // PRODUCT IMAGE
+  // =====================================================
   const getImageUrl = (product) => {
-    if (!product?.images?.length) {
-      return "https://via.placeholder.com/100x100?text=No+Image";
+    const fallback =
+      "https://via.placeholder.com/100x100?text=No+Image";
+
+    if (
+      !product?.images ||
+      product.images.length === 0
+    ) {
+      return fallback;
     }
 
     const image = product.images[0];
@@ -201,15 +366,12 @@ function Checkout() {
       return image;
     }
 
-    return (
-      image?.url ||
-      "https://via.placeholder.com/100x100?text=No+Image"
-    );
+    return image?.url || fallback;
   };
 
-  // ---------------------------------------
-  // Calculate Totals
-  // ---------------------------------------
+  // =====================================================
+  // CALCULATE SUBTOTAL
+  // =====================================================
   const subtotal = cartItems.reduce(
     (total, item) => {
       const product = getProduct(item);
@@ -223,18 +385,37 @@ function Checkout() {
     0
   );
 
-  // Same calculation as backend
+  const roundedSubtotal = Number(
+    subtotal.toFixed(2)
+  );
+
+  // =====================================================
+  // SHIPPING
+  // =====================================================
   const shipping =
-    subtotal >= 1000 ? 0 : 50;
+    roundedSubtotal >= 1000 ? 0 : 50;
 
-  const tax = subtotal * 0.05;
+  // =====================================================
+  // TAX - 5%
+  // =====================================================
+  const tax = Number(
+    (roundedSubtotal * 0.05).toFixed(2)
+  );
 
-  const total =
-    subtotal + shipping + tax;
+  // =====================================================
+  // TOTAL
+  // =====================================================
+  const total = Number(
+    (
+      roundedSubtotal +
+      shipping +
+      tax
+    ).toFixed(2)
+  );
 
-  // ---------------------------------------
-  // Check Product Availability
-  // ---------------------------------------
+  // =====================================================
+  // CHECK PRODUCT AVAILABILITY
+  // =====================================================
   const unavailableItem = cartItems.find(
     (item) => {
       const product = getProduct(item);
@@ -261,9 +442,9 @@ function Checkout() {
     }
   );
 
-  // ---------------------------------------
-  // Place Order
-  // ---------------------------------------
+  // =====================================================
+  // PLACE ORDER
+  // =====================================================
   const handlePlaceOrder = async () => {
     if (orderLoading) {
       return;
@@ -293,6 +474,7 @@ function Checkout() {
         "Cart is empty",
         "Add a product before placing an order."
       );
+
       navigate("/products");
       return;
     }
@@ -303,6 +485,7 @@ function Checkout() {
         "Update your cart",
         "One or more items are unavailable or do not have enough stock."
       );
+
       navigate("/cart");
       return;
     }
@@ -310,9 +493,9 @@ function Checkout() {
     try {
       setOrderLoading(true);
 
-      // -----------------------------------
-      // Create Order
-      // -----------------------------------
+      // =================================================
+      // CREATE ORDER
+      // =================================================
       const orderResponse = await api.post(
         "/orders",
         {
@@ -336,22 +519,26 @@ function Checkout() {
         );
       }
 
-      // -----------------------------------
+      // =================================================
       // COD
-      // -----------------------------------
+      // =================================================
       if (paymentMethod === "cod") {
         showToast(
           "success",
           "Order placed",
           "Your cash on delivery order is ready to track."
         );
-        navigate(`/orders/${orderId}`);
+
+        navigate(
+          `/orders/${orderId}`
+        );
+
         return;
       }
 
-      // -----------------------------------
-      // Online Payment
-      // -----------------------------------
+      // =================================================
+      // ONLINE PAYMENT
+      // =================================================
       const paymentResponse =
         await api.post(
           "/payments/create-checkout-session",
@@ -397,9 +584,9 @@ function Checkout() {
     }
   };
 
-  // ---------------------------------------
-  // Loading
-  // ---------------------------------------
+  // =====================================================
+  // LOADING
+  // =====================================================
   if (
     loading ||
     !isAuthenticated ||
@@ -418,9 +605,9 @@ function Checkout() {
     );
   }
 
-  // ---------------------------------------
-  // Error
-  // ---------------------------------------
+  // =====================================================
+  // ERROR
+  // =====================================================
   if (error) {
     return (
       <>
@@ -455,9 +642,9 @@ function Checkout() {
     );
   }
 
-  // ---------------------------------------
-  // Empty Cart
-  // ---------------------------------------
+  // =====================================================
+  // EMPTY CART
+  // =====================================================
   if (cartItems.length === 0) {
     return (
       <>
@@ -519,13 +706,13 @@ function Checkout() {
 
         <section className="mx-auto max-w-7xl px-4 py-8">
           <div className="grid gap-8 lg:grid-cols-3">
-            {/* ================================= */}
+            {/* ================================================= */}
             {/* LEFT SIDE */}
-            {/* ================================= */}
+            {/* ================================================= */}
             <div className="space-y-6 lg:col-span-2">
-              {/* ================================= */}
+              {/* ================================================= */}
               {/* DELIVERY ADDRESS */}
-              {/* ================================= */}
+              {/* ================================================= */}
               <div className="rounded-2xl bg-white p-6 shadow-sm">
                 <div className="mb-5 flex items-center justify-between gap-4">
                   <div>
@@ -541,12 +728,16 @@ function Checkout() {
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowAddressForm(
-                        (previous) =>
-                          !previous
-                      )
-                    }
+                    onClick={() => {
+                      if (
+                        showAddressForm
+                      ) {
+                        handleCancelAddressForm();
+                      } else {
+                        setEditingAddress(null);
+                        setShowAddressForm(true);
+                      }
+                    }}
                     className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
                   >
                     {showAddressForm
@@ -555,21 +746,28 @@ function Checkout() {
                   </button>
                 </div>
 
-                {/* Add Address */}
+                {/* ================================================= */}
+                {/* ADDRESS FORM */}
+                {/* ================================================= */}
                 {showAddressForm && (
                   <div className="mb-6 rounded-xl border border-indigo-100 bg-indigo-50 p-5">
                     <h3 className="mb-4 font-semibold text-gray-900">
-                      Add New Address
+                      {editingAddress
+                        ? "Edit Address"
+                        : "Add New Address"}
                     </h3>
 
                     <AddressForm
-                      onSubmit={
-                        handleAddAddress
+                      initialData={
+                        editingAddress
                       }
-                      onCancel={() =>
-                        setShowAddressForm(
-                          false
-                        )
+                      onSubmit={
+                        editingAddress
+                          ? handleUpdateAddress
+                          : handleAddAddress
+                      }
+                      onCancel={
+                        handleCancelAddressForm
                       }
                       loading={
                         addressLoading
@@ -578,7 +776,9 @@ function Checkout() {
                   </div>
                 )}
 
-                {/* Addresses */}
+                {/* ================================================= */}
+                {/* NO ADDRESSES */}
+                {/* ================================================= */}
                 {addresses.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center">
                     <div className="mb-3 text-4xl">
@@ -593,11 +793,10 @@ function Checkout() {
                     {!showAddressForm && (
                       <button
                         type="button"
-                        onClick={() =>
-                          setShowAddressForm(
-                            true
-                          )
-                        }
+                        onClick={() => {
+                          setEditingAddress(null);
+                          setShowAddressForm(true);
+                        }}
                         className="rounded-lg bg-indigo-600 px-5 py-2 font-semibold text-white transition hover:bg-indigo-700"
                       >
                         Add Delivery Address
@@ -605,16 +804,19 @@ function Checkout() {
                     )}
                   </div>
                 ) : (
+                  /* ================================================= */
+                  /* ADDRESS LIST */
+                  /* ================================================= */
                   <div className="space-y-3">
                     {addresses.map(
                       (address) => (
-                        <label
+                        <div
                           key={address._id}
-                          className={`block cursor-pointer rounded-xl border-2 p-4 transition ${
+                          className={`rounded-xl border-2 p-4 transition ${
                             selectedAddress ===
                             address._id
                               ? "border-indigo-600 bg-indigo-50"
-                              : "border-gray-200 hover:border-gray-300"
+                              : "border-gray-200 bg-white"
                           }`}
                         >
                           <div className="flex gap-3">
@@ -630,14 +832,14 @@ function Checkout() {
                               }
                               onChange={(e) =>
                                 setSelectedAddress(
-                                  e.target
-                                    .value
+                                  e.target.value
                                 )
                               }
                               className="mt-1 h-4 w-4 accent-indigo-600"
                             />
 
-                            <div className="flex-1">
+                            <div className="min-w-0 flex-1">
+                              {/* Name + Default */}
                               <div className="mb-1 flex flex-wrap items-center gap-2">
                                 <p className="font-bold text-gray-900">
                                   {
@@ -652,40 +854,76 @@ function Checkout() {
                                 )}
                               </div>
 
+                              {/* Phone */}
                               <p className="text-sm text-gray-600">
-                                {address.phone}
+                                {
+                                  address.phone
+                                }
                               </p>
 
+                              {/* Address */}
                               <p className="mt-2 text-sm leading-6 text-gray-600">
                                 {
-                                  address.addressLine1
+                                  address.address
                                 }
-
-                                {address.addressLine2 &&
-                                  `, ${address.addressLine2}`}
-
                                 ,{" "}
-                                {address.city},{" "}
-                                {address.state}{" "}
+                                {
+                                  address.city
+                                }
+                                ,{" "}
+                                {
+                                  address.state
+                                }{" "}
                                 -{" "}
                                 {
-                                  address.postalCode
+                                  address.pincode
                                 }
-                                ,{" "}
-                                {address.country}
                               </p>
+
+                              {/* Edit / Delete */}
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleEditAddress(
+                                      address
+                                    )
+                                  }
+                                  disabled={
+                                    addressLoading
+                                  }
+                                  className="rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  Edit
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDeleteAddress(
+                                      address._id
+                                    )
+                                  }
+                                  disabled={
+                                    addressLoading
+                                  }
+                                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  Delete
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </label>
+                        </div>
                       )
                     )}
                   </div>
                 )}
               </div>
 
-              {/* ================================= */}
+              {/* ================================================= */}
               {/* PAYMENT METHOD */}
-              {/* ================================= */}
+              {/* ================================================= */}
               <div className="rounded-2xl bg-white p-6 shadow-sm">
                 <h2 className="mb-2 text-xl font-bold text-gray-900">
                   Payment Method
@@ -736,7 +974,7 @@ function Checkout() {
                     </div>
                   </label>
 
-                  {/* Stripe */}
+                  {/* STRIPE */}
                   <label
                     className={`block cursor-pointer rounded-xl border-2 p-4 transition ${
                       paymentMethod ===
@@ -777,9 +1015,9 @@ function Checkout() {
                 </div>
               </div>
 
-              {/* ================================= */}
+              {/* ================================================= */}
               {/* SECURITY */}
-              {/* ================================= */}
+              {/* ================================================= */}
               <div className="rounded-xl border border-green-200 bg-green-50 p-4">
                 <div className="flex gap-3">
                   <span className="text-xl">
@@ -800,16 +1038,18 @@ function Checkout() {
               </div>
             </div>
 
-            {/* ================================= */}
+            {/* ================================================= */}
             {/* RIGHT SIDE - ORDER SUMMARY */}
-            {/* ================================= */}
+            {/* ================================================= */}
             <div>
               <div className="sticky top-24 rounded-2xl bg-white p-6 shadow-sm">
                 <h2 className="mb-6 text-xl font-bold text-gray-900">
                   Order Summary
                 </h2>
 
-                {/* Items */}
+                {/* ================================================= */}
+                {/* ITEMS */}
+                {/* ================================================= */}
                 <div className="mb-6 max-h-72 space-y-4 overflow-y-auto">
                   {cartItems.map((item) => {
                     const product =
@@ -872,15 +1112,20 @@ function Checkout() {
                   })}
                 </div>
 
-                {/* Totals */}
+                {/* ================================================= */}
+                {/* TOTALS */}
+                {/* ================================================= */}
                 <div className="space-y-4 border-t border-gray-200 pt-5">
                   <div className="flex justify-between text-gray-600">
                     <span>Subtotal</span>
 
                     <span className="font-medium text-gray-900">
                       ₹
-                      {subtotal.toLocaleString(
-                        "en-IN"
+                      {roundedSubtotal.toLocaleString(
+                        "en-IN",
+                        {
+                          maximumFractionDigits: 2,
+                        }
                       )}
                     </span>
                   </div>
@@ -928,7 +1173,9 @@ function Checkout() {
                   </div>
                 </div>
 
-                {/* Stock Warning */}
+                {/* ================================================= */}
+                {/* STOCK WARNING */}
+                {/* ================================================= */}
                 {unavailableItem && (
                   <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                     One or more products are
@@ -937,7 +1184,9 @@ function Checkout() {
                   </div>
                 )}
 
-                {/* Place Order */}
+                {/* ================================================= */}
+                {/* PLACE ORDER */}
+                {/* ================================================= */}
                 <button
                   type="button"
                   onClick={
@@ -959,7 +1208,9 @@ function Checkout() {
                     : "Place Order"}
                 </button>
 
-                {/* Back to Cart */}
+                {/* ================================================= */}
+                {/* BACK TO CART */}
+                {/* ================================================= */}
                 <button
                   type="button"
                   onClick={() =>

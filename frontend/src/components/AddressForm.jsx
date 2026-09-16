@@ -9,12 +9,11 @@ function AddressForm({
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
-    addressLine1: "",
-    addressLine2: "",
+    address: "",
     city: "",
     state: "",
-    postalCode: "",
-    country: "India",
+    pincode: "",
+    isDefault: false,
   });
 
   useEffect(() => {
@@ -22,43 +21,53 @@ function AddressForm({
       setFormData({
         fullName: initialData.fullName || "",
         phone: initialData.phone || "",
-        addressLine1: initialData.addressLine1 || "",
-        addressLine2: initialData.addressLine2 || "",
+        address: initialData.address || "",
         city: initialData.city || "",
         state: initialData.state || "",
-        postalCode: initialData.postalCode || "",
-        country: initialData.country || "India",
+        pincode: initialData.pincode || "",
+        isDefault: Boolean(initialData.isDefault),
+      });
+    } else {
+      setFormData({
+        fullName: "",
+        phone: "",
+        address: "",
+        city: "",
+        state: "",
+        pincode: "",
+        isDefault: false,
       });
     }
   }, [initialData]);
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
+    const { name, value, type, checked } = event.target;
 
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
+
     onSubmit(formData);
   };
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white border rounded-xl p-6 shadow-sm"
+      className="rounded-xl border bg-white p-6 shadow-sm"
     >
-      <h3 className="text-xl font-bold text-gray-900 mb-5">
+      <h3 className="mb-5 text-xl font-bold text-gray-900">
         {initialData ? "Edit Address" : "Add New Address"}
       </h3>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Full Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="mb-1 block text-sm font-medium text-gray-700">
             Full Name
           </label>
 
@@ -68,14 +77,14 @@ function AddressForm({
             value={formData.fullName}
             onChange={handleChange}
             required
-            className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Enter full name"
           />
         </div>
 
         {/* Phone */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="mb-1 block text-sm font-medium text-gray-700">
             Phone
           </label>
 
@@ -85,47 +94,31 @@ function AddressForm({
             value={formData.phone}
             onChange={handleChange}
             required
-            className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Enter phone number"
           />
         </div>
 
-        {/* Address Line 1 */}
+        {/* Address */}
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Address Line 1
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Address
           </label>
 
-          <input
-            type="text"
-            name="addressLine1"
-            value={formData.addressLine1}
+          <textarea
+            name="address"
+            value={formData.address}
             onChange={handleChange}
             required
-            className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="House number, street, area"
-          />
-        </div>
-
-        {/* Address Line 2 */}
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Address Line 2
-          </label>
-
-          <input
-            type="text"
-            name="addressLine2"
-            value={formData.addressLine2}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Apartment, landmark (optional)"
+            rows="3"
+            className="w-full rounded-lg border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="House number, street, area, landmark"
           />
         </div>
 
         {/* City */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="mb-1 block text-sm font-medium text-gray-700">
             City
           </label>
 
@@ -135,14 +128,14 @@ function AddressForm({
             value={formData.city}
             onChange={handleChange}
             required
-            className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="City"
           />
         </div>
 
         {/* State */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="mb-1 block text-sm font-medium text-gray-700">
             State
           </label>
 
@@ -152,51 +145,51 @@ function AddressForm({
             value={formData.state}
             onChange={handleChange}
             required
-            className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="State"
           />
         </div>
 
-        {/* Postal Code */}
+        {/* Pincode */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Postal Code
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Pincode
           </label>
 
           <input
             type="text"
-            name="postalCode"
-            value={formData.postalCode}
+            name="pincode"
+            value={formData.pincode}
             onChange={handleChange}
             required
-            className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Postal code"
+            maxLength="6"
+            pattern="[0-9]{6}"
+            className="w-full rounded-lg border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="6-digit pincode"
           />
         </div>
 
-        {/* Country */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Country
-          </label>
+        {/* Default Address */}
+        <div className="flex items-center">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
+            <input
+              type="checkbox"
+              name="isDefault"
+              checked={formData.isDefault}
+              onChange={handleChange}
+              className="h-4 w-4"
+            />
 
-          <input
-            type="text"
-            name="country"
-            value={formData.country}
-            onChange={handleChange}
-            required
-            className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Country"
-          />
+            Make this my default address
+          </label>
         </div>
       </div>
 
-      <div className="flex gap-3 mt-6">
+      <div className="mt-6 flex gap-3">
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400"
+          className="rounded-lg bg-blue-600 px-6 py-2.5 font-medium text-white hover:bg-blue-700 disabled:bg-gray-400"
         >
           {loading
             ? "Saving..."
@@ -210,7 +203,7 @@ function AddressForm({
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="border border-gray-300 text-gray-700 px-6 py-2.5 rounded-lg font-medium hover:bg-gray-50"
+            className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
           >
             Cancel
           </button>

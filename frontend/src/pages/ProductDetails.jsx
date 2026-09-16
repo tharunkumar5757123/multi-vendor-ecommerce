@@ -13,13 +13,15 @@ import {
   removeWishlistProduct,
 } from "../redux/slices/wishlistSlice";
 
+import { setCart } from "../redux/slices/cartSlice";
+
 function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const wishlistProducts = useSelector(
-    (state) => state.wishlist.products
+    (state) => state.wishlist.products || []
   );
 
   const [product, setProduct] = useState(null);
@@ -39,7 +41,7 @@ function ProductDetails() {
   });
 
   const isWishlisted = wishlistProducts.some(
-    (item) => item._id === id
+    (item) => item?._id === id
   );
 
   // Fetch product
@@ -50,7 +52,6 @@ function ProductDetails() {
       const response = await api.get(`/products/${id}`);
 
       setProduct(response.data.product || response.data);
-
     } catch (error) {
       console.error("Product fetch error:", error);
 
@@ -65,9 +66,13 @@ function ProductDetails() {
   // Fetch reviews
   const fetchReviews = async () => {
     try {
-      const response = await api.get(`/reviews/product/${id}`);
+      const response = await api.get(
+        `/reviews/product/${id}`
+      );
 
-      setReviews(response.data.reviews || response.data || []);
+      setReviews(
+        response.data.reviews || response.data || []
+      );
     } catch (error) {
       console.error("Reviews fetch error:", error);
       setReviews([]);
@@ -95,10 +100,18 @@ function ProductDetails() {
     try {
       setCartLoading(true);
 
-      await api.post("/cart", {
+      // Add product to backend cart
+      const response = await api.post("/cart", {
         productId: product._id,
         quantity,
       });
+
+      // Get updated cart
+      const updatedCart =
+        response.data?.cart || response.data;
+
+      // Update Redux immediately
+      dispatch(setCart(updatedCart));
 
       showToast(
         "success",
@@ -135,11 +148,19 @@ function ProductDetails() {
     try {
       setCartLoading(true);
 
-      await api.post("/cart", {
+      // Add product to backend cart
+      const response = await api.post("/cart", {
         productId: product._id,
         quantity,
       });
 
+      // Update Redux immediately
+      const updatedCart =
+        response.data?.cart || response.data;
+
+      dispatch(setCart(updatedCart));
+
+      // Go to cart
       navigate("/cart");
     } catch (error) {
       console.error("Buy now error:", error);
@@ -404,7 +425,9 @@ function ProductDetails() {
                   {images.map((image, index) => (
                     <button
                       key={index}
-                      onClick={() => setSelectedImage(index)}
+                      onClick={() =>
+                        setSelectedImage(index)
+                      }
                       className={`h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 ${
                         selectedImage === index
                           ? "border-indigo-600"
@@ -413,7 +436,9 @@ function ProductDetails() {
                     >
                       <img
                         src={getImageUrl(image)}
-                        alt={`${product.name} ${index + 1}`}
+                        alt={`${product.name} ${
+                          index + 1
+                        }`}
                         className="h-full w-full object-cover"
                       />
                     </button>
@@ -441,7 +466,8 @@ function ProductDetails() {
                     <span
                       key={star}
                       className={
-                        star <= Math.round(product.rating || 0)
+                        star <=
+                        Math.round(product.rating || 0)
                           ? "text-yellow-400"
                           : "text-gray-300"
                       }
@@ -478,7 +504,8 @@ function ProductDetails() {
                     <span className="font-semibold text-green-600">
                       Save ₹
                       {Number(
-                        product.price - product.discountPrice
+                        product.price -
+                          product.discountPrice
                       ).toLocaleString("en-IN")}
                     </span>
                   </>
@@ -500,14 +527,20 @@ function ProductDetails() {
               {/* Product Information */}
               <div className="mb-6 grid grid-cols-2 gap-4 border-y border-gray-200 py-5">
                 <div>
-                  <p className="text-sm text-gray-500">SKU</p>
+                  <p className="text-sm text-gray-500">
+                    SKU
+                  </p>
+
                   <p className="font-semibold text-gray-800">
                     {product.sku || "N/A"}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-500">Stock</p>
+                  <p className="text-sm text-gray-500">
+                    Stock
+                  </p>
+
                   <p
                     className={`font-semibold ${
                       product.stock > 0
@@ -572,7 +605,9 @@ function ProductDetails() {
 
                     <button
                       onClick={increaseQuantity}
-                      disabled={quantity >= product.stock}
+                      disabled={
+                        quantity >= product.stock
+                      }
                       className="px-4 py-2 text-lg hover:bg-gray-100 disabled:opacity-40"
                     >
                       +
@@ -616,7 +651,9 @@ function ProductDetails() {
                       : "border-gray-300 text-gray-700 hover:bg-gray-50"
                   }`}
                 >
-                  {isWishlisted ? "♥ Saved" : "♡ Wishlist"}
+                  {isWishlisted
+                    ? "♥ Saved"
+                    : "♡ Wishlist"}
                 </button>
               </div>
             </div>
@@ -641,11 +678,21 @@ function ProductDetails() {
                   onChange={handleReviewChange}
                   className="mb-4 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
                 >
-                  <option value="5">★★★★★ - Excellent</option>
-                  <option value="4">★★★★ - Good</option>
-                  <option value="3">★★★ - Average</option>
-                  <option value="2">★★ - Poor</option>
-                  <option value="1">★ - Very Poor</option>
+                  <option value="5">
+                    ★★★★★ - Excellent
+                  </option>
+                  <option value="4">
+                    ★★★★ - Good
+                  </option>
+                  <option value="3">
+                    ★★★ - Average
+                  </option>
+                  <option value="2">
+                    ★★ - Poor
+                  </option>
+                  <option value="1">
+                    ★ - Very Poor
+                  </option>
                 </select>
 
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
@@ -700,18 +747,20 @@ function ProductDetails() {
                           </p>
 
                           <div className="flex text-sm">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <span
-                                key={star}
-                                className={
-                                  star <= review.rating
-                                    ? "text-yellow-400"
-                                    : "text-gray-300"
-                                }
-                              >
-                                ★
-                              </span>
-                            ))}
+                            {[1, 2, 3, 4, 5].map(
+                              (star) => (
+                                <span
+                                  key={star}
+                                  className={
+                                    star <= review.rating
+                                      ? "text-yellow-400"
+                                      : "text-gray-300"
+                                  }
+                                >
+                                  ★
+                                </span>
+                              )
+                            )}
                           </div>
                         </div>
 
