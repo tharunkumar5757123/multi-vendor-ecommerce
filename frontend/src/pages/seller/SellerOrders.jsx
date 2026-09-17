@@ -279,7 +279,7 @@ function SellerOrders() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100">
-        <Navbar />
+        {/* <Navbar /> */}
 
         <div className="min-h-[70vh] flex items-center justify-center">
           <div className="text-center">
@@ -300,7 +300,7 @@ function SellerOrders() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Navbar />
+      {/* <Navbar /> */}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 

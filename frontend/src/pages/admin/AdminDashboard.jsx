@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 
-import Navbar from "../../components/Navbar";
+// import Navbar from "../../components/Navbar";
 import api from "../../services/api";
 
 function AdminDashboard() {
@@ -39,7 +39,7 @@ function AdminDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100">
-        <Navbar />
+        {/* <Navbar /> */}
 
         <div className="min-h-[70vh] flex items-center justify-center">
           <div className="text-center">
@@ -58,7 +58,7 @@ function AdminDashboard() {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-100">
-        <Navbar />
+        {/* <Navbar /> */}
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="bg-red-50 border border-red-200 text-red-700 p-5 rounded-xl">
@@ -77,7 +77,7 @@ function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Navbar />
+      {/* <Navbar /> */}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 

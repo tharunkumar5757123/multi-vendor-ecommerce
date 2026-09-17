@@ -420,7 +420,7 @@ function SellerEditProduct() {
               </p>
             </div>
 
-            <button
+            {/* <button
               type="button"
               onClick={() =>
                 navigate("/seller/products")
@@ -429,7 +429,7 @@ function SellerEditProduct() {
               className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 disabled:opacity-50"
             >
               Back to Products
-            </button>
+            </button> */}
           </div>
         </div>
       </header>

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-import AdminSidebar from "./AdminSidebar";
+import SellerSidebar from "./SellerSidebar";
 import { logout } from "../redux/slices/authSlice";
 
 function ThemeToggle({ theme, onToggle }) {
@@ -10,7 +10,7 @@ function ThemeToggle({ theme, onToggle }) {
     <button
       type="button"
       onClick={onToggle}
-      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-indigo-500 dark:hover:text-indigo-400"
+      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-blue-200 hover:text-blue-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-blue-500 dark:hover:text-blue-400"
       aria-label="Toggle theme"
       title="Toggle theme"
     >
@@ -19,7 +19,7 @@ function ThemeToggle({ theme, onToggle }) {
   );
 }
 
-function AdminLayout({ children }) {
+function SellerLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [theme, setTheme] = useState(() => {
@@ -29,27 +29,37 @@ function AdminLayout({ children }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { user } = useSelector((state) => state.auth);
+  const { user } = useSelector(
+    (state) => state.auth
+  );
 
-  // Apply theme
+  // ============================
+  // Theme
+  // ============================
+
   useEffect(() => {
     const isDark = theme === "dark";
 
-    document.documentElement.classList.toggle("dark", isDark);
+    document.documentElement.classList.toggle(
+      "dark",
+      isDark
+    );
+
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // Close mobile sidebar whenever route/content changes
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [children]);
-
-  // Toggle theme
   const toggleTheme = () => {
-    setTheme((currentTheme) => (currentTheme === "dark" ? "light" : "dark"));
+    setTheme((currentTheme) =>
+      currentTheme === "dark"
+        ? "light"
+        : "dark"
+    );
   };
 
+  // ============================
   // Logout
+  // ============================
+
   const handleLogout = () => {
     dispatch(logout());
     navigate("/login");
@@ -57,21 +67,31 @@ function AdminLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-gray-100 transition-colors duration-300 dark:bg-gray-950">
+
       {/* Sidebar */}
-      <AdminSidebar
+
+      <SellerSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Main Area */}
+      {/* Main Content */}
+
       <div className="lg:ml-64">
+
         {/* Header */}
-        <header className="sticky top-0 z-30 border-b border-gray-200 bg-white shadow-sm transition-colors duration-300 dark:border-gray-800 dark:bg-gray-900">
+
+        <header className="sticky top-0 z-30 border-b border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+
           <div className="flex h-20 items-center justify-between px-4 sm:px-6">
-            {/* Mobile Menu Button */}
+
+            {/* Mobile Menu */}
+
             <button
               type="button"
-              onClick={() => setSidebarOpen(true)}
+              onClick={() =>
+                setSidebarOpen(true)
+              }
               className="rounded-lg p-2 text-2xl text-gray-700 transition hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 lg:hidden"
               aria-label="Open sidebar"
               title="Open menu"
@@ -79,51 +99,65 @@ function AdminLayout({ children }) {
               ☰
             </button>
 
-            {/* Page Header */}
+            {/* Desktop Title */}
+
             <div className="hidden lg:block">
               <h2 className="text-xl font-bold text-gray-800 dark:text-white">
-                Admin Panel
+                Seller Panel
               </h2>
 
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Manage your marketplace
+                Manage your store
               </p>
             </div>
 
-            {/* Right Section */}
+            {/* Right Side */}
+
             <div className="ml-auto flex items-center gap-3 sm:gap-4">
-              {/* Profile Button */}
+
+              {/* Profile */}
+
               <button
                 type="button"
-                onClick={() => navigate("/admin/profile")}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-indigo-600 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-indigo-400"
+                onClick={() =>
+                  navigate("/seller/profile")
+                }
+                className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-blue-600 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-blue-400"
               >
                 👤 Profile
               </button>
 
-              {/* Admin Profile */}
+              {/* User */}
+
               <div className="hidden items-center gap-3 border-l border-gray-200 pl-4 dark:border-gray-700 sm:flex">
-                {/* Avatar */}
+
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 font-bold text-white">
-                  {user?.name?.charAt(0)?.toUpperCase() || "A"}
+                  {user?.name
+                    ?.charAt(0)
+                    ?.toUpperCase() || "S"}
                 </div>
 
-                {/* User Details */}
                 <div>
                   <p className="text-sm font-semibold text-gray-800 dark:text-white">
-                    {user?.name || "Admin"}
+                    {user?.name || "Seller"}
                   </p>
 
                   <p className="text-xs capitalize text-gray-500 dark:text-gray-400">
-                    {user?.role || "admin"}
+                    {user?.role || "seller"}
                   </p>
                 </div>
+
               </div>
 
-              {/* Theme Toggle */}
-              <ThemeToggle theme={theme} onToggle={toggleTheme} />
+              {/* Theme */}
+
+              <ThemeToggle
+                theme={theme}
+                onToggle={toggleTheme}
+              />
 
               {/* Logout */}
+
               <button
                 type="button"
                 onClick={handleLogout}
@@ -131,17 +165,20 @@ function AdminLayout({ children }) {
               >
                 Logout
               </button>
+
             </div>
           </div>
         </header>
 
         {/* Page Content */}
+
         <main className="min-h-[calc(100vh-5rem)] bg-gray-100 p-4 transition-colors duration-300 dark:bg-gray-950 sm:p-6">
           {children}
         </main>
+
       </div>
     </div>
   );
 }
 
-export default AdminLayout;
+export default SellerLayout;

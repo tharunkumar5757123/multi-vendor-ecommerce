@@ -124,7 +124,7 @@ function SellerDashboard() {
           <div className="flex items-center gap-3">
 
             {/* Add Product */}
-            <button
+            {/* <button
               type="button"
               onClick={() =>
                 navigate("/seller/products/add")
@@ -132,16 +132,16 @@ function SellerDashboard() {
               className="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-blue-700"
             >
               + Add Product
-            </button>
+            </button> */}
 
             {/* Logout */}
-            <button
+            {/* <button
               type="button"
               onClick={handleLogout}
               className="bg-red-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-red-700 transition"
             >
               Logout
-            </button>
+            </button> */}
 
           </div>
         </div>
@@ -288,7 +288,7 @@ function SellerDashboard() {
             <button
               type="button"
               onClick={() =>
-                navigate("/seller/products/add")
+                navigate("/sellers/products/add")
               }
               className="bg-white rounded-xl shadow-sm p-6 text-left hover:shadow-md transition"
             >

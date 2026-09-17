@@ -13,6 +13,8 @@ const adminRoutes = require("./routes/adminRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const addressRoutes = require("./routes/addressRoutes");
 const wishlistRoutes = require("./routes/wishlistRoutes");
+const sellerRequestRoutes = require("./routes/sellerRequestRoutes");
+
 
 const errorMiddleware = require("./middleware/errorMiddleware");
 
@@ -55,6 +57,7 @@ app.use("/api/sellers", sellerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/addresses", addressRoutes);
+app.use("/api/seller-requests", sellerRequestRoutes);
 
 // 404 handler
 app.use((req, res, next) => {

@@ -1,4 +1,3 @@
-
 import { NavLink } from "react-router-dom";
 
 function AdminSidebar({ isOpen, onClose }) {
@@ -28,6 +27,16 @@ function AdminSidebar({ isOpen, onClose }) {
       path: "/admin/orders",
       icon: "🛒",
     },
+    {
+      name: "Seller Requests",
+      path: "/admin/seller-requests",
+      icon: "🏪",
+    },
+    // {
+    //   name:"profile",
+    //   path:"/profile",
+    //   icon:"👤 "
+    // }
   ];
 
   return (
@@ -50,7 +59,7 @@ function AdminSidebar({ isOpen, onClose }) {
         <div className="flex h-20 items-center justify-between border-b border-gray-700 px-6">
           <div>
             <h1 className="text-2xl font-bold text-blue-400">
-              MultiShop
+              ShopBasket
             </h1>
 
             <p className="text-xs text-gray-400">

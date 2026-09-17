@@ -190,7 +190,7 @@ function SellerProducts() {
               </p>
             </div>
 
-            <div className="flex gap-3">
+            {/* <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() =>
@@ -214,7 +214,7 @@ function SellerProducts() {
               >
                 + Add Product
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
       </header>

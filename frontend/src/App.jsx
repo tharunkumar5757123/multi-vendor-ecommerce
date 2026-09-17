@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
@@ -9,6 +8,7 @@ import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AuthLoader from "./components/AuthLoader";
 import WishlistLoader from "./components/WishlistLoader";
+import ContactAdmin from "./pages/ContactAdmin";
 
 // Customer
 import Home from "./pages/Home";
@@ -31,6 +31,8 @@ import AdminOrders from "./pages/admin/AdminOrders";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminProductDetails from "./pages/admin/AdminProductDetails";
 import AdminLayout from "./components/AdminLayout";
+import SellerRequests from "./pages/admin/SellerRequests";
+import AdminProfile from "./pages/admin/AdminProfile";
 
 // Seller
 import SellerDashboard from "./pages/seller/SellerDashboard";
@@ -38,6 +40,8 @@ import SellerProducts from "./pages/seller/SellerProducts";
 import SellerAddProduct from "./pages/seller/SellerAddProduct";
 import SellerEditProduct from "./pages/seller/SellerEditProduct";
 import SellerOrders from "./pages/seller/SellerOrders";
+import SellerLayout from "./components/SellerLayout";
+import SellerProfile from "./pages/seller/SellerProfile";
 
 function App() {
   return (
@@ -47,10 +51,10 @@ function App() {
         reverseOrder={false}
       />
 
-      {/* Refreshes logged-in user data after page reload */}
+      {/* Refresh logged-in user after page reload */}
       <AuthLoader />
 
-      {/* Loads wishlist data when customer is logged in */}
+      {/* Load wishlist when customer is logged in */}
       <WishlistLoader />
 
       <Routes>
@@ -59,37 +63,36 @@ function App() {
             PUBLIC ROUTES
         ====================================================== */}
 
-        {/* Public Landing Page */}
         <Route
           path="/"
           element={<Home />}
         />
 
-        {/* Login */}
         <Route
           path="/login"
           element={<Login />}
         />
 
-        {/* Register */}
         <Route
           path="/register"
           element={<Register />}
         />
 
-        {/* Unauthorized / 403 */}
         <Route
           path="/unauthorized"
           element={<Unauthorized />}
         />
 
-        {/* Public Product Listing */}
         <Route
           path="/products"
           element={<Products />}
         />
 
-        {/* Public Product Details */}
+        <Route
+          path="/contact-admin"
+          element={<ContactAdmin />}
+        />
+
         <Route
           path="/products/:id"
           element={<ProductDetails />}
@@ -100,7 +103,6 @@ function App() {
             CUSTOMER ROUTES
         ====================================================== */}
 
-        {/* Customer Home */}
         <Route
           path="/home"
           element={
@@ -110,7 +112,6 @@ function App() {
           }
         />
 
-        {/* Cart */}
         <Route
           path="/cart"
           element={
@@ -120,7 +121,6 @@ function App() {
           }
         />
 
-        {/* Checkout */}
         <Route
           path="/checkout"
           element={
@@ -130,7 +130,6 @@ function App() {
           }
         />
 
-        {/* Orders */}
         <Route
           path="/orders"
           element={
@@ -140,7 +139,6 @@ function App() {
           }
         />
 
-        {/* Order Details */}
         <Route
           path="/orders/:id"
           element={
@@ -150,7 +148,6 @@ function App() {
           }
         />
 
-        {/* Wishlist */}
         <Route
           path="/wishlist"
           element={
@@ -160,7 +157,6 @@ function App() {
           }
         />
 
-        {/* Profile */}
         <Route
           path="/profile"
           element={
@@ -176,7 +172,6 @@ function App() {
           }
         />
 
-        {/* Payment Success */}
         <Route
           path="/payment-success"
           element={
@@ -186,7 +181,6 @@ function App() {
           }
         />
 
-        {/* Payment Cancelled */}
         <Route
           path="/payment-cancelled"
           element={
@@ -201,7 +195,6 @@ function App() {
             ADMIN ROUTES
         ====================================================== */}
 
-        {/* Admin Dashboard */}
         <Route
           path="/admin/dashboard"
           element={
@@ -213,7 +206,6 @@ function App() {
           }
         />
 
-        {/* Admin Users */}
         <Route
           path="/admin/users"
           element={
@@ -225,7 +217,6 @@ function App() {
           }
         />
 
-        {/* Admin Products */}
         <Route
           path="/admin/products"
           element={
@@ -237,7 +228,6 @@ function App() {
           }
         />
 
-        {/* Admin Product Details */}
         <Route
           path="/admin/products/:id"
           element={
@@ -249,7 +239,6 @@ function App() {
           }
         />
 
-        {/* Admin Orders */}
         <Route
           path="/admin/orders"
           element={
@@ -261,13 +250,34 @@ function App() {
           }
         />
 
-        {/* Admin Categories */}
         <Route
           path="/admin/categories"
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
               <AdminLayout>
                 <AdminCategories />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/seller-requests"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminLayout>
+                <SellerRequests />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/profile"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminLayout>
+                <AdminProfile />
               </AdminLayout>
             </ProtectedRoute>
           }
@@ -283,7 +293,9 @@ function App() {
           path="/seller/dashboard"
           element={
             <ProtectedRoute allowedRoles={["seller"]}>
-              <SellerDashboard />
+              <SellerLayout>
+                <SellerDashboard />
+              </SellerLayout>
             </ProtectedRoute>
           }
         />
@@ -293,27 +305,33 @@ function App() {
           path="/seller/products"
           element={
             <ProtectedRoute allowedRoles={["seller"]}>
-              <SellerProducts />
+              <SellerLayout>
+                <SellerProducts />
+              </SellerLayout>
             </ProtectedRoute>
           }
         />
 
-        {/* Add Product */}
+        {/* Seller Add Product */}
         <Route
-          path="/seller/products/add"
+          path="/sellers/products/add"
           element={
             <ProtectedRoute allowedRoles={["seller"]}>
-              <SellerAddProduct />
+              <SellerLayout>
+                <SellerAddProduct />
+              </SellerLayout>
             </ProtectedRoute>
           }
         />
 
-        {/* Edit Product */}
+        {/* Seller Edit Product */}
         <Route
           path="/seller/products/edit/:id"
           element={
             <ProtectedRoute allowedRoles={["seller"]}>
-              <SellerEditProduct />
+              <SellerLayout>
+                <SellerEditProduct />
+              </SellerLayout>
             </ProtectedRoute>
           }
         />
@@ -323,7 +341,21 @@ function App() {
           path="/seller/orders"
           element={
             <ProtectedRoute allowedRoles={["seller"]}>
-              <SellerOrders />
+              <SellerLayout>
+                <SellerOrders />
+              </SellerLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Seller Profile */}
+        <Route
+          path="/seller/profile"
+          element={
+            <ProtectedRoute allowedRoles={["seller"]}>
+              <SellerLayout>
+                <SellerProfile />
+              </SellerLayout>
             </ProtectedRoute>
           }
         />
